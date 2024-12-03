@@ -5,11 +5,31 @@
 #include <span>
 #include <functional>
 #include <concepts>
+#include <random>
 #include <stdexcept>
+#include <cmath>
 #include <cstdint>
 
 namespace neural
 {
+
+    template<std::floating_point T>
+    T gaussian_distribution(T mean, T standard_deviation, T x)
+    {
+        static constexpr T inv_sqrt_2pi = (T)0.39894228040143267793994605993439;
+
+        T a = (x - mean) / standard_deviation;
+        return std::exp((T)(-.5) * a * a) * inv_sqrt_2pi / standard_deviation;
+    }
+
+    template<std::floating_point T>
+    T gaussian_distribution(T standard_deviation, T x)
+    {
+        static constexpr T inv_sqrt_2pi = (T)0.39894228040143267793994605993439;
+
+        T a = x / standard_deviation;
+        return std::exp((T)(-.5) * a * a) * inv_sqrt_2pi / standard_deviation;
+    }
 
     template<typename T>
     T relu(T v)
@@ -231,6 +251,74 @@ namespace neural
                 data.data() + data_idx,
                 layer_sizes()[layer_idx - (size_t)1]
             );
+        }
+
+        // randomize weights and biases using a uniform distribution
+        template<typename RandomEngine>
+        void randomize_uniform(
+            RandomEngine engine,
+            T min_weight,
+            T max_weight,
+            T min_bias,
+            T max_bias
+        )
+        {
+            std::uniform_real_distribution<T> weight_dist(
+                min_weight,
+                max_weight
+            );
+
+            std::uniform_real_distribution<T> bias_dist(
+                min_bias,
+                max_bias
+            );
+
+            for (size_t i = 1; i < num_layers(); i++)
+            {
+                for (auto& v : biases(i))
+                {
+                    v = bias_dist(engine);
+                }
+                for (size_t j = 0; j < layer_sizes()[i]; j++)
+                {
+                    for (auto& v : weights(i, j))
+                    {
+                        v = weight_dist(engine);
+                    }
+                }
+            }
+        }
+
+        // randomize weights using Normal Xavier Initialization and randomize
+        // biases using a uniform distribution.
+        // https://www.geeksforgeeks.org/xavier-initialization
+        template<typename RandomEngine, T(*sqrt_fn)(T) = std::sqrt>
+        void randomize_xavier(RandomEngine engine, T min_bias, T max_bias)
+        {
+            T standard_dev = sqrt_fn(
+                (T)2 / (T)(input_layer_size() + output_layer_size())
+            );
+            std::normal_distribution<T> weight_dist((T)0, standard_dev);
+
+            std::uniform_real_distribution<T> bias_dist(
+                min_bias,
+                max_bias
+            );
+
+            for (size_t i = 1; i < num_layers(); i++)
+            {
+                for (auto& v : biases(i))
+                {
+                    v = bias_dist(engine);
+                }
+                for (size_t j = 0; j < layer_sizes()[i]; j++)
+                {
+                    for (auto& v : weights(i, j))
+                    {
+                        v = weight_dist(engine);
+                    }
+                }
+            }
         }
 
         // evaluate the model. this function will modify every value in every
