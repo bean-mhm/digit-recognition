@@ -1,11 +1,17 @@
 #include <iostream>
 
-#include "neural.hpp"
-
-using Ar = neural::Network<std::array, float, 5, 8, 9>;
+#include "app.hpp"
 
 int main()
 {
-    neural::Network<std::array, float, 5, 8, 9> a;
-    Ar g;
+    try
+    {
+        digitrec::App app;
+        app.run();
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << e.what() << '\n';
+        return 1;
+    }
 }
