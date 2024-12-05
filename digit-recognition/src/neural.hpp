@@ -415,8 +415,8 @@ namespace neural
             return output_values();
         }
 
-        // calculate the cost for a given data point. this will modify every
-        // value in every layer.
+        // calculate the cost for a given data point using squared error loss
+        // (SEL). this will modify every value in every layer.
         T cost(std::span<T> input, std::span<T> expected_output)
         {
             if (input.size() != input_size())
@@ -446,8 +446,8 @@ namespace neural
             return c;
         }
 
-        // calculate the average cost for given data points. this will modify
-        // every value in every layer.
+        // calculate the average cost for given data points using squared error
+        // loss (SEL). this will modify every value in every layer.
         // * data.size() must be a multiple of (input_size() + output_size()).
         // * data must contain chunks of input data and the corresponding
         //   expected output data.
