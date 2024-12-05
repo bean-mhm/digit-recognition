@@ -389,9 +389,9 @@ namespace neural
             }
         }
 
-        // evaluate the model (forward pass). this function will modify every
-        // value in every layer except the input layer.
-        void eval()
+        // evaluate the model. this function will modify every value in every
+        // layer except the input layer.
+        void forward_pass()
         {
             for (size_t layer_idx = 1; layer_idx < n_layers; layer_idx++)
             {
@@ -417,9 +417,9 @@ namespace neural
             }
         }
 
-        // update the input values based on a given argument, evaluate the
-        // network, and return the output values.
-        std::span<T> eval(std::span<T> input)
+        // update the input values, evaluate the network, and return the output
+        // values.
+        std::span<T> forward_pass(std::span<T> input)
         {
             if (input.size() != input_size())
             {
@@ -427,7 +427,7 @@ namespace neural
             }
 
             input_values() = input;
-            eval();
+            forward_pass();
             return output_values();
         }
 
@@ -450,7 +450,7 @@ namespace neural
             }
 
             input_values() = input;
-            eval();
+            forward_pass();
 
             T c = (T)0;
             auto output = output_values();

@@ -26,7 +26,7 @@ namespace digitrec
         for (float v = -6.f; v < 6.01f; v += .05f)
         {
             net.input_values()[0] = v;
-            net.eval();
+            net.forward_pass();
             std::cout << std::format(
                 "{:.3f}, {:.3f}\n",
                 v,
