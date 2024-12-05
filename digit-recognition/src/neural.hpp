@@ -373,8 +373,8 @@ namespace neural
             }
         }
 
-        // evaluate the model. this function will modify every value in every
-        // layer except the input layer.
+        // evaluate the model (forward pass). this function will modify every
+        // value in every layer except the input layer.
         void eval()
         {
             for (size_t layer_idx = 1; layer_idx < n_layers; layer_idx++)
