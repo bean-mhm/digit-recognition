@@ -46,6 +46,22 @@ namespace neural
         return (T)1;
     }
 
+    template<typename T, T fac_for_negatives = (T)0.01>
+    T leaky_relu(T v)
+    {
+        if (v < (T)0)
+            return v * fac_for_negatives;
+        return v;
+    }
+
+    template<typename T, T fac_for_negatives = (T)0.01>
+    T leaky_relu_deriv(T v)
+    {
+        if (v < (T)0)
+            return fac_for_negatives;
+        return (T)1;
+    }
+
     template<typename T, T(*tanh_fn)(T) = std::tanh>
     T tanh(T v)
     {
