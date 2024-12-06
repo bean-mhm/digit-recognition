@@ -819,6 +819,9 @@ namespace neural
         // perform accumulated backward pass for more than one training example
         // (data point) by adding up the weight and bias gradients for each
         // training example (after zeroing out all gradients in the beginning).
+        // this won't divide the gradients by the number of training examples
+        // so the division needs to be handled separately when using the
+        // gradients later.
         // this will modify every value, weight, and bias in every layer.
         // * data_points.size() must be a multiple of
         //   (input_size() + output_size()).
