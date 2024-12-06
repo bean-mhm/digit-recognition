@@ -30,7 +30,7 @@ namespace digitrec
         static inline const auto activation_deriv = neural::tanh_deriv<float>;
 
         std::mt19937 rng;
-        neural::Network<float, 4, false> net;
+        neural::Network<float, 4, true> net;
 
         float test_cost();
 

@@ -590,7 +590,7 @@ namespace neural
                     b[i] = (T)0;
                 }
 
-                for (size_t n = 0u; n < layer_sizes()[n]; n++)
+                for (size_t n = 0u; n < layer_sizes()[l]; n++)
                 {
                     auto w = weights(l, n);
                     for (size_t i = 1u; i < w.size(); i += 2u)
