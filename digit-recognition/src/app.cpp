@@ -43,7 +43,7 @@ namespace digitrec
         std::uniform_real_distribution<float> dist(-10.f, 10.f);
 
         std::vector<float> data_points(2000);
-        for (size_t i = 0; i < data_points.size(); i += 2)
+        for (size_t i = 0; i < data_points.size(); i += (size_t)2)
         {
             data_points[i] = dist(rng);
             data_points[i + 1] = target_fn(data_points[i]);

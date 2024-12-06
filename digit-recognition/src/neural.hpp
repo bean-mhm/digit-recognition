@@ -91,10 +91,16 @@ namespace neural
 
     // T is the type used to store numerical values. A typical value may
     // be `float`.
+    // 
     // n_layers is the number of layers. it should be at least 2 to represent an
     // input and an output layer.
-    template<typename T, size_t n_layers>
-        requires(n_layers >= (size_t)2)
+    // 
+    // if store_gradients is false, then the network can only be used for
+    // prediction or evaluation, and not training. if store_gradients is true,
+    // weight and bias gradients will be stored right next to their
+    // corresponding weight or bias. for example, the bias gradient of some node
+    // will be stored sizeof(T) bytes after the bias of that node.
+    template<typename T, size_t n_layers, bool store_gradients>
     class Network
     {
     public:
@@ -111,7 +117,7 @@ namespace neural
             _activation_fns(activation_fns),
             _activation_derivs(activation_derivs)
         {
-            if (n_layers < (size_t)2)
+            if constexpr (n_layers < (size_t)2)
             {
                 throw std::invalid_argument(
                     "n_layers should be at least 2 to represent an input and "
@@ -129,13 +135,32 @@ namespace neural
                 }
             }
 
+            // if store_gradients is true, weight and bias gradients will be
+            // stored right next to their corresponding weight or bias. for
+            // example, the bias gradient of some node will be stored sizeof(T)
+            // bytes after the bias of that node.
+
             size_t n_data = _layer_sizes[0];
-            for (size_t i = 1; i < n_layers; i++)
+            if constexpr (store_gradients)
             {
-                size_t n_nodes = _layer_sizes[i];
-                n_data += n_nodes // values
-                    + n_nodes // biases
-                    + (n_nodes * _layer_sizes[i - (size_t)1]); // weights
+                for (size_t i = 1; i < n_layers; i++)
+                {
+                    size_t n_nodes = _layer_sizes[i];
+                    n_data += n_nodes // values
+                        + n_nodes * (size_t)2 // biases and their gradients
+                        // weights and their gradients
+                        + n_nodes * _layer_sizes[i - (size_t)1] * (size_t)2;
+                }
+            }
+            else
+            {
+                for (size_t i = 1; i < n_layers; i++)
+                {
+                    size_t n_nodes = _layer_sizes[i];
+                    n_data += n_nodes // values
+                        + n_nodes // biases
+                        + n_nodes * _layer_sizes[i - (size_t)1]; // weights
+                }
             }
             data.resize(n_data, (T)0);
         }
@@ -185,7 +210,13 @@ namespace neural
             return _activation_derivs[layer_idx - (size_t)1];
         }
 
-        // node values in a layer
+        // node values in a layer. values can represent different things in
+        // different stages. the values in the first layer always represent the
+        // input values. in a forward pass, the values in the hidden layers and
+        // the output layer represent the activation values of the nodes. in a
+        // backward pass, the values in the hidden layers and the output layer
+        // represent the gradient of the cost with respect to the activation of
+        // the nodes.
         constexpr std::span<T> values(size_t layer_idx)
         {
             if (layer_idx >= n_layers)
@@ -199,12 +230,26 @@ namespace neural
             }
 
             size_t data_idx = input_size();
-            for (size_t i = 1; i < layer_idx; i++)
+            if constexpr (store_gradients)
             {
-                size_t n_nodes = layer_sizes()[i];
-                data_idx += n_nodes // values
-                    + n_nodes // biases
-                    + (n_nodes * layer_sizes()[i - (size_t)1]); // weights
+                for (size_t i = 1; i < layer_idx; i++)
+                {
+                    size_t n_nodes = layer_sizes()[i];
+                    size_t n_prev_nodes = layer_sizes()[i - (size_t)1];
+                    data_idx += n_nodes // values
+                        + n_nodes * (size_t)2 // biases + gradients
+                        + n_nodes * n_prev_nodes * (size_t)2; // weights + grads
+                }
+            }
+            else
+            {
+                for (size_t i = 1; i < layer_idx; i++)
+                {
+                    size_t n_nodes = layer_sizes()[i];
+                    data_idx += n_nodes // values
+                        + n_nodes // biases
+                        + n_nodes * layer_sizes()[i - (size_t)1]; // weights
+                }
             }
 
             return std::span<T>(
@@ -225,7 +270,8 @@ namespace neural
             return values(n_layers - 1);
         }
 
-        // node biases in a layer
+        // node biases in a layer. if store_gradients is true, then every bias
+        // value will be immediately followed by its gradient.
         constexpr std::span<T> biases(size_t layer_idx)
         {
             if (layer_idx < (size_t)1 || layer_idx >= n_layers)
@@ -234,22 +280,43 @@ namespace neural
             }
 
             size_t data_idx = input_size();
-            for (size_t i = 1; i < layer_idx; i++)
+            if constexpr (store_gradients)
             {
-                size_t n_nodes = layer_sizes()[i];
-                data_idx += n_nodes // node values
-                    + n_nodes // biases
-                    + (n_nodes * layer_sizes()[i - (size_t)1]); // weights
-            }
-            data_idx += layer_sizes()[layer_idx]; // this layer's values
+                for (size_t i = 1; i < layer_idx; i++)
+                {
+                    size_t n_nodes = layer_sizes()[i];
+                    size_t n_prev_nodes = layer_sizes()[i - (size_t)1];
+                    data_idx += n_nodes // values
+                        + n_nodes * (size_t)2 // biases + gradients
+                        + n_nodes * n_prev_nodes * (size_t)2; // weights + grads
+                }
+                data_idx += layer_sizes()[layer_idx]; // this layer's values
 
-            return std::span<T>(
-                data.data() + data_idx,
-                layer_sizes()[layer_idx]
-            );
+                return std::span<T>(
+                    data.data() + data_idx,
+                    layer_sizes()[layer_idx] * (size_t)2
+                );
+            }
+            else
+            {
+                for (size_t i = 1; i < layer_idx; i++)
+                {
+                    size_t n_nodes = layer_sizes()[i];
+                    data_idx += n_nodes // node values
+                        + n_nodes // biases
+                        + (n_nodes * layer_sizes()[i - (size_t)1]); // weights
+                }
+                data_idx += layer_sizes()[layer_idx]; // this layer's values
+
+                return std::span<T>(
+                    data.data() + data_idx,
+                    layer_sizes()[layer_idx]
+                );
+            }
         }
 
-        // weights for a specific node in a layer
+        // weights for a specific node in a layer. if store_gradients is true,
+        // then every weight value will be immediately followed by its gradient.
         constexpr std::span<T> weights(size_t layer_idx, size_t node_idx)
         {
             if (layer_idx < (size_t)1 || layer_idx >= n_layers)
@@ -263,25 +330,108 @@ namespace neural
             }
 
             size_t data_idx = input_size();
-            for (size_t i = 1; i < layer_idx; i++)
+            if constexpr (store_gradients)
             {
-                size_t n_nodes = layer_sizes()[i];
-                data_idx += n_nodes // node values
-                    + n_nodes // biases
-                    + (n_nodes * layer_sizes()[i - (size_t)1]); // weights
-            }
-            data_idx += layer_sizes()[layer_idx] * ((size_t)2 + node_idx);
+                for (size_t i = 1; i < layer_idx; i++)
+                {
+                    size_t n_nodes = layer_sizes()[i];
+                    size_t n_prev_nodes = layer_sizes()[i - (size_t)1];
+                    data_idx += n_nodes // values
+                        + n_nodes * (size_t)2 // biases + gradients
+                        + n_nodes * n_prev_nodes * (size_t)2; // weights + grads
+                }
 
-            return std::span<T>(
-                data.data() + data_idx,
-                layer_sizes()[layer_idx - (size_t)1]
-            );
+                size_t n_nodes = layer_sizes()[layer_idx];
+                size_t n_prev_nodes = layer_sizes()[layer_idx - (size_t)1];
+
+                data_idx += n_nodes; // this layer's values
+                data_idx += n_nodes * (size_t)2; // biases + gradients
+                // weights + gradients
+                data_idx += node_idx * n_prev_nodes * (size_t)2;
+
+                return std::span<T>(
+                    data.data() + data_idx,
+                    n_prev_nodes * (size_t)2
+                );
+            }
+            else
+            {
+                for (size_t i = 1; i < layer_idx; i++)
+                {
+                    size_t n_nodes = layer_sizes()[i];
+                    data_idx += n_nodes // node values
+                        + n_nodes // biases
+                        + (n_nodes * layer_sizes()[i - (size_t)1]); // weights
+                }
+
+                size_t n_nodes = layer_sizes()[layer_idx];
+                size_t n_prev_nodes = layer_sizes()[layer_idx - (size_t)1];
+
+                data_idx += n_nodes * (size_t)2; // this layer's values & biases
+                data_idx += node_idx * n_prev_nodes; // weights
+
+                return std::span<T>(
+                    data.data() + data_idx,
+                    n_prev_nodes
+                );
+            }
+        }
+
+        // randomize weights and biases using custom distributions
+        template<
+            typename RandomEngine,
+            typename WeightDistribution,
+            typename BiasDistribution
+        >
+        void randomize(
+            RandomEngine& engine,
+            WeightDistribution& weight_dist,
+            BiasDistribution& bias_dist
+        )
+        {
+            if constexpr (store_gradients)
+            {
+                for (size_t i = 1; i < num_layers(); i++)
+                {
+                    auto b = biases(i);
+                    for (size_t j = 0; j < b.size(); j += (size_t)2)
+                    {
+                        b[j] = bias_dist(engine);
+                    }
+
+                    for (size_t j = 0; j < layer_sizes()[i]; j++)
+                    {
+                        auto w = weights(i, j);
+                        for (size_t k = 0; k < w.size(); k += (size_t)2)
+                        {
+                            w[k] = weight_dist(engine);
+                        }
+                    }
+                }
+            }
+            else
+            {
+                for (size_t i = 1; i < num_layers(); i++)
+                {
+                    for (auto& v : biases(i))
+                    {
+                        v = bias_dist(engine);
+                    }
+                    for (size_t j = 0; j < layer_sizes()[i]; j++)
+                    {
+                        for (auto& v : weights(i, j))
+                        {
+                            v = weight_dist(engine);
+                        }
+                    }
+                }
+            }
         }
 
         // randomize weights and biases using a uniform distribution
         template<typename RandomEngine>
         void randomize_uniform(
-            RandomEngine engine,
+            RandomEngine& engine,
             T min_weight,
             T max_weight,
             T min_bias,
@@ -292,26 +442,11 @@ namespace neural
                 min_weight,
                 max_weight
             );
-
             std::uniform_real_distribution<T> bias_dist(
                 min_bias,
                 max_bias
             );
-
-            for (size_t i = 1; i < num_layers(); i++)
-            {
-                for (auto& v : biases(i))
-                {
-                    v = bias_dist(engine);
-                }
-                for (size_t j = 0; j < layer_sizes()[i]; j++)
-                {
-                    for (auto& v : weights(i, j))
-                    {
-                        v = weight_dist(engine);
-                    }
-                }
-            }
+            randomize(engine, weight_dist, bias_dist);
         }
 
         // randomize weights using Uniform Xavier Initialization and randomize
@@ -319,7 +454,7 @@ namespace neural
         // https://www.geeksforgeeks.org/xavier-initialization
         template<typename RandomEngine, T(*sqrt_fn)(T) = std::sqrt>
         void randomize_xavier_uniform(
-            RandomEngine engine,
+            RandomEngine& engine,
             T min_bias,
             T max_bias
         )
@@ -337,20 +472,7 @@ namespace neural
                 max_bias
             );
 
-            for (size_t i = 1; i < num_layers(); i++)
-            {
-                for (auto& v : biases(i))
-                {
-                    v = bias_dist(engine);
-                }
-                for (size_t j = 0; j < layer_sizes()[i]; j++)
-                {
-                    for (auto& v : weights(i, j))
-                    {
-                        v = weight_dist(engine);
-                    }
-                }
-            }
+            randomize(engine, weight_dist, bias_dist);
         }
 
         // randomize weights using Normal Xavier Initialization and randomize
@@ -358,7 +480,7 @@ namespace neural
         // https://www.geeksforgeeks.org/xavier-initialization
         template<typename RandomEngine, T(*sqrt_fn)(T) = std::sqrt>
         void randomize_xavier_normal(
-            RandomEngine engine,
+            RandomEngine& engine,
             T min_bias,
             T max_bias
         )
@@ -373,17 +495,64 @@ namespace neural
                 max_bias
             );
 
-            for (size_t i = 1; i < num_layers(); i++)
+            randomize(engine, weight_dist, bias_dist);
+        }
+
+        // zero out weight and bias gradients in a layer
+        void zero_gradients(size_t layer_idx)
+        {
+            if constexpr (!store_gradients)
             {
-                for (auto& v : biases(i))
+                throw std::logic_error(
+                    "can't zero out gradients when store_gradients is false"
+                );
+            }
+
+            if (layer_idx < (size_t)1 || layer_idx >= n_layers)
+            {
+                throw std::invalid_argument("invalid layer index");
+            }
+
+            auto b = biases(layer_idx);
+            for (size_t i = 1; i < b.size(); i += (size_t)2)
+            {
+                b[i] = (T)0;
+            }
+
+            for (size_t i = 0; i < layer_sizes()[i]; i++)
+            {
+                auto w = weights(layer_idx, i);
+                for (size_t j = 1; j < w.size(); j += (size_t)2)
                 {
-                    v = bias_dist(engine);
+                    w[j] = (T)0;
                 }
-                for (size_t j = 0; j < layer_sizes()[i]; j++)
+            }
+        }
+
+        // zero out weight and bias gradients in all layers
+        void zero_gradients()
+        {
+            if constexpr (!store_gradients)
+            {
+                throw std::logic_error(
+                    "can't zero out gradients when store_gradients is false"
+                );
+            }
+
+            for (size_t layer_idx = 1; layer_idx < n_layers; layer_idx++)
+            {
+                auto b = biases(layer_idx);
+                for (size_t i = 1; i < b.size(); i += (size_t)2)
                 {
-                    for (auto& v : weights(i, j))
+                    b[i] = (T)0;
+                }
+
+                for (size_t i = 0; i < layer_sizes()[i]; i++)
+                {
+                    auto w = weights(layer_idx, i);
+                    for (size_t j = 1; j < w.size(); j += (size_t)2)
                     {
-                        v = weight_dist(engine);
+                        w[j] = (T)0;
                     }
                 }
             }
@@ -401,34 +570,41 @@ namespace neural
                 const auto& activ = activation_fn(layer_idx);
 
                 const size_t n_nodes = layer_sizes()[layer_idx];
-                for (size_t node_idx = 0; node_idx < n_nodes; node_idx++)
+                const size_t n_prev_nodes = layer_sizes()[layer_idx - 1];
+
+                if constexpr (store_gradients)
                 {
-                    auto w = weights(layer_idx, node_idx);
-
-                    T sum = (T)0;
-                    for (size_t i = 0; i < w.size(); i++)
+                    for (size_t node_idx = 0; node_idx < n_nodes; node_idx++)
                     {
-                        sum += w[i] * prev_layer_values[i];
-                    }
-                    sum += this_layer_biases[node_idx];
+                        auto w = weights(layer_idx, node_idx);
 
-                    this_layer_values[node_idx] = activ(sum);
+                        T sum = (T)0;
+                        for (size_t i = 0; i < n_prev_nodes; i++)
+                        {
+                            sum += w[i * (size_t)2] * prev_layer_values[i];
+                        }
+                        sum += this_layer_biases[node_idx * (size_t)2];
+
+                        this_layer_values[node_idx] = activ(sum);
+                    }
+                }
+                else
+                {
+                    for (size_t node_idx = 0; node_idx < n_nodes; node_idx++)
+                    {
+                        auto w = weights(layer_idx, node_idx);
+
+                        T sum = (T)0;
+                        for (size_t i = 0; i < n_prev_nodes; i++)
+                        {
+                            sum += w[i] * prev_layer_values[i];
+                        }
+                        sum += this_layer_biases[node_idx];
+
+                        this_layer_values[node_idx] = activ(sum);
+                    }
                 }
             }
-        }
-
-        // update the input values, evaluate the network, and return the output
-        // values.
-        std::span<T> forward_pass(std::span<T> input)
-        {
-            if (input.size() != input_size())
-            {
-                throw std::invalid_argument("invalid input data size");
-            }
-
-            input_values() = input;
-            forward_pass();
-            return output_values();
         }
 
         // calculate the cost for a given data point using squared error loss
