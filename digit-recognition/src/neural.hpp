@@ -214,13 +214,7 @@ namespace neural
             return _activation_derivs[layer_idx - 1u];
         }
 
-        // node values in a layer. values can represent different things in
-        // different stages. the values in the first layer always represent the
-        // input values. after a forward pass, the values in the hidden layers
-        // and the output layer represent the activation values of the nodes.
-        // after a backward pass, however, the values in the hidden layers and
-        // the output layer represent the gradient of the cost with respect to
-        // the activation of the nodes.
+        // node activation values in a layer
         constexpr std::span<T> values(size_t layer_idx)
         {
             if (layer_idx >= n_layers)
@@ -665,14 +659,14 @@ namespace neural
         }
 
         // calculate the gradient of the cost function with respect to every
-        // weight and bias using backpropagation. this will modify every value,
-        // weight, and bias in every layer.
+        // weight and bias using backpropagation for a single training example.
+        // this will modify every value, weight, and bias in every layer.
         // if accumulate_gradients is true, then we'll only add values onto
         // weight and bias gradients instead of replacing them entirely. this is
         // useful for averaging gradients for several training examples, but
         // keep in mind to call zero_gradients() first to reset the gradients,
         // and divide the final gradients by the number of training examples.
-        template<bool accumulate_gradients>
+        template<bool accumulate_gradients, bool sanity_checks = true>
         void backward_pass(std::span<T> input, std::span<T> expected_output)
         {
             // Note to others and future self:
@@ -711,46 +705,98 @@ namespace neural
                 );
             }
 
-            if (input.size() != input_size())
+            if (sanity_checks && input.size() != input_size())
             {
                 throw std::invalid_argument(
                     "invalid input data size"
                 );
             }
 
-            if (expected_output.size() != output_size())
+            if (sanity_checks && expected_output.size() != output_size())
             {
                 throw std::invalid_argument(
                     "invalid expected output data size"
                 );
             }
 
+            // do a forward pass first to calculate the network's current
+            // prediction and all the pre-activation and activation values.
             input_values() = input;
             forward_pass();
 
-            // calculate the gradient of the cost function with respect to the
-            // node activations in the output layer. before we modify these
-            // values, they're just the current output or prediction of the
-            // network that we got after the forward pass.
-            auto dcost_dout = output_values();
-            for (size_t i = 0u; i < output_size(); i++)
+            // cache the gradient of the cost function with respect to the
+            // pre-activation values in each node in the current and previous
+            // layers (dcost_dz).
+            // the size of these two vectors will be equal to the maximum layer
+            // size to avoid extra memory (de)allocations. we'll alternate
+            // between the two vectors, so one of them will be treated as the
+            // current layer's dcost_dz and the other will be the previous
+            // layer's, and the order will swap after every iteration.
+            size_t max_layer_size = 1u;
+            for (size_t l = 1u; l < n_layers; l++)
             {
-                dcost_dout[i] = (T)2 * (dcost_dout[i] - expected_output[i]);
+                max_layer_size = std::max(max_layer_size, layer_sizes()[l]);
+            }
+            std::vector<T> dcost_dz_0(max_layer_size, (T)0);
+            std::vector<T> dcost_dz_1(max_layer_size, (T)0);
+
+            // iter will increase in the backward layer loop
+            size_t iter = 0;
+            T* this_layer_dcost_dz;
+            T* prev_layer_dcost_dz;
+            if (iter % 2 == 0)
+            {
+                this_layer_dcost_dz = dcost_dz_0.data();
+                prev_layer_dcost_dz = dcost_dz_1.data();
+            }
+            else
+            {
+                this_layer_dcost_dz = dcost_dz_1.data();
+                prev_layer_dcost_dz = dcost_dz_0.data();
+            }
+
+            // calculate the gradient of the cost function with respect to the
+            // pre-activation values in the output layer's nodes (dcost_dz).
+            {
+                auto predicted_output = output_values();
+                auto output_layer_pre_activ = pre_activ(n_layers - 1u);
+
+                // gradient of the activation function with respect to the
+                // output layer's pre-activation values. (this is a function
+                // pointer).
+                const auto& dact_dz = activation_deriv(n_layers - 1u);
+
+                for (size_t n = 0u; n < output_size(); n++)
+                {
+                    // gradient of the cost function with respect to the node
+                    // activations in the output layer.
+                    T dcost_dact =
+                        (T)2 * (predicted_output[n] - expected_output[n]);
+
+                    this_layer_dcost_dz[n] =
+                        dcost_dact
+                        * dact_dz(output_layer_pre_activ[n]);
+                }
             }
 
             // start from the last layer (output layer) and go backward
             for (ptrdiff_t l = n_layers - 1u; l >= 1; l--)
             {
-                // gradient of the activation function with respect to the
-                // current node's pre-activation value.
-                const auto& dact_dz = activation_deriv(l);
-
-                // gradient of the cost function with respect to the activations
-                // in the current layer.
-                auto dcost_dact = values(l);
+                // gradient of the cost function with respect to the
+                // pre-activation values in the current and previous layers
+                // (dcost_dz).
+                if (iter % 2 == 0)
+                {
+                    this_layer_dcost_dz = dcost_dz_0.data();
+                    prev_layer_dcost_dz = dcost_dz_1.data();
+                }
+                else
+                {
+                    this_layer_dcost_dz = dcost_dz_1.data();
+                    prev_layer_dcost_dz = dcost_dz_0.data();
+                }
 
                 auto prev_layer_values = values(l - 1);
-                auto this_layer_pre_activ = pre_activ(l);
                 auto this_layer_biases = biases(l);
 
                 // calculate the gradient of the cost function with respect to
@@ -759,10 +805,7 @@ namespace neural
                 {
                     // gradient of the cost function with respect to the current
                     // node's pre-activation value.
-                    TODO_cache_dcost_dz_with_double_buffering;
-                    T dcost_dz =
-                        dcost_dact[n]
-                        * dact_dz(this_layer_pre_activ[n]);
+                    T dcost_dz = this_layer_dcost_dz[n];
 
                     // bias gradient
                     if constexpr (accumulate_gradients)
@@ -793,26 +836,38 @@ namespace neural
                 }
 
                 if (l <= 1)
+                {
+                    iter++;
                     continue;
+                }
+
+                auto prev_layer_pre_activ = pre_activ(l - 1u);
+
+                // gradient of the activation function with respect to the
+                // previous layer's pre-activation values. (this is a function
+                // pointer).
+                const auto& prev_dact_dz = activation_deriv(l - 1u);
 
                 // calculate the gradient of the cost function with respect to
-                // the node activations in the previous layer.
-                auto prev_dcost_dact = values(l - 1);
+                // the pre-activation values in the previous layer (dcost_dz).
                 for (size_t pn = 0u; pn < layer_sizes()[l - 1]; pn++)
                 {
+                    // this is the gradient of the cost function with respect to
+                    // the activation values in the previous layer (dcost_dact).
                     T dcost_dact_pn = (T)0;
                     for (size_t n = 0u; n < layer_sizes()[l]; n++)
                     {
-                        TODO_cache_dcost_dz_with_double_buffering;
-                        T dcost_dz =
-                            dcost_dact[n]
-                            * dact_dz(this_layer_pre_activ[n]);
-
-                        dcost_dact_pn += dcost_dz * weights(l, n)[pn * 2u];
+                        dcost_dact_pn +=
+                            this_layer_dcost_dz[n] // dcost_dz
+                            * weights(l, n)[pn * 2u]; // dz_dact
                     }
 
-                    prev_dcost_dact[pn] = dcost_dact_pn;
+                    prev_layer_dcost_dz[pn] =
+                        dcost_dact_pn
+                        * prev_dact_dz(prev_layer_pre_activ[pn]);;
                 }
+
+                iter++;
             }
         }
 
@@ -823,11 +878,10 @@ namespace neural
         // so the division needs to be handled separately when using the
         // gradients later.
         // this will modify every value, weight, and bias in every layer.
-        // * data_points.size() must be a multiple of
-        //   (input_size() + output_size()).
-        // * data_points must contain chunks of input data and the corresponding
-        //   expected output data.
-        void accumulated_backward_pass(std::span<T> data_points)
+        // * each element in data_points must be of size
+        //   (input_size() + output_size()) and contain input data and expected
+        //   output data.
+        void accumulated_backward_pass(std::vector<std::span<T>> data_points)
         {
             if constexpr (!store_gradients)
             {
@@ -837,41 +891,83 @@ namespace neural
                 );
             }
 
-            const size_t data_point_size = input_size() + output_size();
-            const size_t n_data_points = data_points.size() / data_point_size;
-            if (data_points.size() % data_point_size != 0)
+            zero_gradients();
+            for (const auto& data_point : data_points)
             {
-                throw std::invalid_argument("invalid data size");
+                if (data_point.size() != (input_size() + output_size()))
+                {
+                    throw std::invalid_argument("invalid data size");
+                }
+
+                backward_pass<true, false>(
+                    data_point.subspan(0, input_size()),
+                    data_point.subspan(input_size(), output_size())
+                );
+            }
+        }
+
+        // perform a single gradient descent step based on given training data
+        // and learning rate. ideally, you would call this function many times
+        // until a local minimum for the cost is found.
+        // this will modify every value, weight, and bias in every layer.
+        // * each element in data_points must be of size
+        //   (input_size() + output_size()) and contain input data and expected
+        //   output data.
+        // * a typical value for learning_rate is 0.01.
+        void train(std::vector<std::span<T>> data_points, T learning_rate)
+        {
+            if constexpr (!store_gradients)
+            {
+                throw std::logic_error(
+                    "can't train when store_gradients is false"
+                );
             }
 
-            zero_gradients();
-            for (size_t i = 0u; i < n_data_points; i++)
+            // add up the weight and bias gradients for every training example
+            // (data point).
+            accumulated_backward_pass(data_points);
+
+            // constant factor to divide gradients by the number of training
+            // examples
+            const T inv_n_data_points = (T)1 / (T)data_points.size();
+
+            for (size_t l = 1u; l < n_layers; l++)
             {
-                backward_pass<true>(
-                    data_points.subspan(
-                        i * data_point_size,
-                        input_size()
-                    ),
-                    data_points.subspan(
-                        i * data_point_size + input_size(),
-                        output_size()
-                    )
-                );
+                const size_t n_nodes = layer_sizes()[l];
+                const size_t n_prev_nodes = layer_sizes()[l - 1u];
+
+                auto b = biases(l);
+                for (size_t i = 0u; i < b.size(); i += 2u)
+                {
+                    T grad = b[i + 1u] * inv_n_data_points;
+                    b[i] -= grad * learning_rate;
+                }
+
+                for (size_t n = 0u; n < n_nodes; n++)
+                {
+                    auto w = weights(l, n);
+                    for (size_t i = 0u; i < w.size(); i += 2u)
+                    {
+                        T grad = w[i + 1u] * inv_n_data_points;
+                        w[i] -= grad * learning_rate;
+                    }
+                }
             }
         }
 
         // calculate the cost for a given data point using squared error loss
         // (SEL). this will modify every value in every layer.
+        template<bool sanity_checks = true>
         T cost(std::span<T> input, std::span<T> expected_output)
         {
-            if (input.size() != input_size())
+            if (sanity_checks && input.size() != input_size())
             {
                 throw std::invalid_argument(
                     "invalid input data size"
                 );
             }
 
-            if (expected_output.size() != output_size())
+            if (sanity_checks && expected_output.size() != output_size())
             {
                 throw std::invalid_argument(
                     "invalid expected output data size"
@@ -893,34 +989,25 @@ namespace neural
 
         // calculate the average cost for given data points using squared error
         // loss (SEL). this will modify every value in every layer.
-        // * data_points.size() must be a multiple of
-        //   (input_size() + output_size()).
-        // * data_points must contain chunks of input data and the corresponding
-        //   expected output data.
-        T average_cost(std::span<T> data_points)
+        // * each element in data_points must be of size
+        //   (input_size() + output_size()) and contain input data and expected
+        //   output data.
+        T average_cost(std::vector<std::span<T>> data_points)
         {
-            const size_t data_point_size = input_size() + output_size();
-            const size_t n_data_points = data_points.size() / data_point_size;
-            if (data_points.size() % data_point_size != 0)
-            {
-                throw std::invalid_argument("invalid data size");
-            }
-
             T c = (T)0;
-            for (size_t i = 0u; i < n_data_points; i++)
+            for (const auto& data_point : data_points)
             {
-                c += cost(
-                    data_points.subspan(
-                        i * data_point_size,
-                        input_size()
-                    ),
-                    data_points.subspan(
-                        i * data_point_size + input_size(),
-                        output_size()
-                    )
+                if (data_point.size() != (input_size() + output_size()))
+                {
+                    throw std::invalid_argument("invalid data size");
+                }
+
+                c += cost<false>(
+                    data_point.subspan(0, input_size()),
+                    data_point.subspan(input_size(), output_size())
                 );
             }
-            c /= (T)n_data_points;
+            c /= (T)data_points.size();
             return c;
         }
 
