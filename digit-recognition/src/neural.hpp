@@ -665,7 +665,8 @@ namespace neural
         }
 
         // calculate the gradient of the cost function with respect to every
-        // weight and bias using backpropagation.
+        // weight and bias using backpropagation. this will modify every value,
+        // weight, and bias in every layer.
         // if accumulate_gradients is true, then we'll only add values onto
         // weight and bias gradients instead of replacing them entirely. this is
         // useful for averaging gradients for several training examples, but
@@ -815,9 +816,15 @@ namespace neural
             }
         }
 
-        // perform averaged backward pass for more than one training example
-        // (data point).
-        void averaged_backward_pass()
+        // perform accumulated backward pass for more than one training example
+        // (data point) by adding up the weight and bias gradients for each
+        // training example (after zeroing out all gradients in the beginning).
+        // this will modify every value, weight, and bias in every layer.
+        // * data_points.size() must be a multiple of
+        //   (input_size() + output_size()).
+        // * data_points must contain chunks of input data and the corresponding
+        //   expected output data.
+        void accumulated_backward_pass(std::span<T> data_points)
         {
             if constexpr (!store_gradients)
             {
@@ -827,7 +834,27 @@ namespace neural
                 );
             }
 
-            TODO;
+            const size_t data_point_size = input_size() + output_size();
+            const size_t n_data_points = data_points.size() / data_point_size;
+            if (data_points.size() % data_point_size != 0)
+            {
+                throw std::invalid_argument("invalid data size");
+            }
+
+            zero_gradients();
+            for (size_t i = 0u; i < n_data_points; i++)
+            {
+                backward_pass<true>(
+                    data_points.subspan(
+                        i * data_point_size,
+                        input_size()
+                    ),
+                    data_points.subspan(
+                        i * data_point_size + input_size(),
+                        output_size()
+                    )
+                );
+            }
         }
 
         // calculate the cost for a given data point using squared error loss
@@ -863,8 +890,9 @@ namespace neural
 
         // calculate the average cost for given data points using squared error
         // loss (SEL). this will modify every value in every layer.
-        // * data.size() must be a multiple of (input_size() + output_size()).
-        // * data must contain chunks of input data and the corresponding
+        // * data_points.size() must be a multiple of
+        //   (input_size() + output_size()).
+        // * data_points must contain chunks of input data and the corresponding
         //   expected output data.
         T average_cost(std::span<T> data_points)
         {
