@@ -12,22 +12,32 @@
 namespace neural
 {
 
+    template<typename T>
+    static void copy_span(std::span<T> from, std::span<T> to)
+    {
+        if (from.size() != to.size())
+        {
+            throw std::invalid_argument("can't copy span, sizes don't match");
+        }
+        std::copy(from.data(), from.data() + from.size(), to.data());
+    }
+
     template<typename T, T(*exp_fn)(T) = std::exp>
     T gaussian_distribution(T mean, T standard_deviation, T x)
     {
-        static constexpr T inv_sqrt_2pi = (T)0.39894228040143267793994605993439;
+        static constexpr T INV_SQRT_2PI = (T)0.39894228040143267793994605993439;
 
         T a = (x - mean) / standard_deviation;
-        return exp_fn((T)(-.5) * a * a) * inv_sqrt_2pi / standard_deviation;
+        return exp_fn((T)(-.5) * a * a) * INV_SQRT_2PI / standard_deviation;
     }
 
     template<typename T, T(*exp_fn)(T) = std::exp>
     T gaussian_distribution(T standard_deviation, T x)
     {
-        static constexpr T inv_sqrt_2pi = (T)0.39894228040143267793994605993439;
+        static constexpr T INV_SQRT_2PI = (T)0.39894228040143267793994605993439;
 
         T a = x / standard_deviation;
-        return exp_fn((T)(-.5) * a * a) * inv_sqrt_2pi / standard_deviation;
+        return exp_fn((T)(-.5) * a * a) * INV_SQRT_2PI / standard_deviation;
     }
 
     template<typename T>
@@ -721,7 +731,7 @@ namespace neural
 
             // do a forward pass first to calculate the network's current
             // prediction and all the pre-activation and activation values.
-            input_values() = input;
+            copy_span(input, input_values());
             forward_pass();
 
             // cache the gradient of the cost function with respect to the
@@ -971,7 +981,7 @@ namespace neural
                 );
             }
 
-            input_values() = input;
+            copy_span(input, input_values());
             forward_pass();
 
             T c = (T)0;
