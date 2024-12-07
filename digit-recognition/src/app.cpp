@@ -5,7 +5,8 @@ namespace digitrec
 
     static float target_fn(float v)
     {
-        return std::fmod(v, 2.f) > 1.f ? 1.f : 0.f;
+        return std::fmod(v, .5f) > .25f ? 1.f : 0.f;
+        //return neural::gaussian_distribution<float>(1.f, v);
     }
 
     template<typename RandomEngine>
@@ -16,7 +17,7 @@ namespace digitrec
         std::vector<std::span<float>>& out_spans
     )
     {
-        std::uniform_real_distribution<float> dist(-6.f, 6.f);
+        std::uniform_real_distribution<float> dist(0.f, 1.f);
 
         out_data.resize(n_data_points * 2u);
         for (size_t i = 0u; i < n_data_points; i++)
@@ -33,11 +34,11 @@ namespace digitrec
     }
 
     App::App()
-        : rng(seed),
+        : rng(SEED),
         net(
-            { 1, 16, 16, 1 },
-            { activation_fn, activation_fn, activation_fn },
-            { activation_deriv, activation_deriv, activation_deriv }
+            { 1, 24, 24, 1 },
+            { ACTIVATION_FN, ACTIVATION_FN, ACTIVATION_FN },
+            { ACTIVATION_DERIV, ACTIVATION_DERIV, ACTIVATION_DERIV }
         )
     {}
 
@@ -47,21 +48,22 @@ namespace digitrec
         net.randomize_xavier_normal(rng, -.01f, .01f);
 
         // train
-        std::uniform_real_distribution<float> dist(-6.f, 6.f);
-        for (size_t i = 0; i < 200; i++)
+        for (size_t i = 0u; i < 1000u; i++)
         {
             std::vector<float> data;
             std::vector<std::span<float>> spans;
-            generate_random_training_data(rng, 200u, data, spans);
+            generate_random_training_data(rng, 100u, data, spans);
 
-            for (size_t i = 0; i < 100; i++)
+            for (size_t i = 0u; i < 100u; i++)
             {
                 net.train(spans, .01f);
             }
+
+            std::cout << std::format("training epoch {} of {}\n", i, 1000);
         }
 
         // evaluate network for a few values
-        for (float v = -10.f; v < 10.01f; v += .05f)
+        for (float v = -1.f; v < 2.001f; v += .01f)
         {
             net.input_values()[0] = v;
             net.forward_pass();

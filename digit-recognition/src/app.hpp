@@ -25,9 +25,11 @@ namespace digitrec
         void run();
 
     private:
-        static constexpr uint32_t seed = 14124;
-        static inline const auto activation_fn = neural::tanh<float>;
-        static inline const auto activation_deriv = neural::tanh_deriv<float>;
+        static constexpr uint32_t SEED = 2727272u;
+        static inline const auto ACTIVATION_FN =
+            neural::leaky_relu<float, .01f>;
+        static inline const auto ACTIVATION_DERIV =
+            neural::leaky_relu_deriv<float, .01f>;
 
         std::mt19937 rng;
         neural::Network<float, 4, true> net;
