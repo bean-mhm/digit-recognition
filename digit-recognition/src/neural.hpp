@@ -933,9 +933,6 @@ namespace neural
 
             for (size_t l = 1u; l < n_layers; l++)
             {
-                const size_t n_nodes = layer_sizes()[l];
-                const size_t n_prev_nodes = layer_sizes()[l - 1u];
-
                 auto b = biases(l);
                 for (size_t i = 0u; i < b.size(); i += 2u)
                 {
@@ -943,7 +940,7 @@ namespace neural
                     b[i] -= grad * learning_rate;
                 }
 
-                for (size_t n = 0u; n < n_nodes; n++)
+                for (size_t n = 0u; n < layer_sizes()[l]; n++)
                 {
                     auto w = weights(l, n);
                     for (size_t i = 0u; i < w.size(); i += 2u)
