@@ -1,12 +1,12 @@
-#include "app.hpp"
+#include "app_1d_function.hpp"
 
 namespace digitrec
 {
 
     static float target_fn(float v)
     {
-        return std::fmod(v, .5f) > .25f ? 1.f : 0.f;
-        //return neural::gaussian_distribution<float>(1.f, v);
+        //return std::fmod(v, .5f) > .25f ? 1.f : 0.f;
+        return neural::gaussian_distribution<float>(.5f, .1f, v) * .2f;
     }
 
     template<typename RandomEngine>
@@ -33,7 +33,7 @@ namespace digitrec
         }
     }
 
-    App::App()
+    App1dFunction::App1dFunction()
         : rng(SEED),
         net(
             { 1, 24, 24, 1 },
@@ -42,13 +42,14 @@ namespace digitrec
         )
     {}
 
-    void App::run()
+    void App1dFunction::run()
     {
         // randomize weights and biases
         net.randomize_xavier_normal(rng, -.01f, .01f);
 
         // train
-        for (size_t i = 0u; i < 1000u; i++)
+        static constexpr size_t N_EPOCHS = 1000u;
+        for (size_t i = 0u; i < N_EPOCHS; i++)
         {
             std::vector<float> data;
             std::vector<std::span<float>> spans;
@@ -59,11 +60,11 @@ namespace digitrec
                 net.train(spans, .01f);
             }
 
-            std::cout << std::format("training epoch {} of {}\n", i, 1000);
+            std::cout << std::format("training epoch {} of {}\n", i, N_EPOCHS);
         }
 
-        // evaluate network for a few values
-        for (float v = -1.f; v < 2.001f; v += .01f)
+        // evaluate the network
+        for (float v = -1.f; v < 2.0001f; v += .005f)
         {
             net.input_values()[0] = v;
             net.forward_pass();
@@ -77,7 +78,7 @@ namespace digitrec
         std::cout << std::format("test cost: {:.4f}\n", test_cost());
     }
 
-    float App::test_cost()
+    float App1dFunction::test_cost()
     {
         std::vector<float> data;
         std::vector<std::span<float>> spans;

@@ -17,10 +17,10 @@
 namespace digitrec
 {
 
-    class App
+    class App1dFunction
     {
     public:
-        App();
+        App1dFunction();
 
         void run();
 
