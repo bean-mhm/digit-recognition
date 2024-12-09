@@ -34,6 +34,9 @@ namespace digitrec
     static constexpr auto TEST_IMAGES_PATH = "./MNIST/t10k-images.idx3-ubyte";
     static constexpr auto TEST_LABELS_PATH = "./MNIST/t10k-labels.idx1-ubyte";
 
+    static constexpr uint32_t WINDOW_SIZE = 640;
+    static constexpr float F_WINDOW_SIZE = WINDOW_SIZE;
+
     struct DigitSample
     {
         // pixel values for a digit stored in a row major format

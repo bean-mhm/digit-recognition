@@ -50,5 +50,8 @@
     <ClInclude Include="src\lib\raylib\rlgl.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\lib\raylib\raygui.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

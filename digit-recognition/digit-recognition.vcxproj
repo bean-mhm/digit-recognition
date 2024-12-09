@@ -55,7 +55,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalIncludeDirectories>$(ProjectDir)src\lib\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -69,7 +69,8 @@
       <AdditionalDependencies>raylib.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>XCOPY "$(ProjectDir)licenses\" "$(OutDir)licenses\" /S /Y</Command>
+      <Command>XCOPY "$(ProjectDir)licenses\" "$(OutDir)licenses\" /S /Y
+COPY "$(ProjectDir)theme.rgs" "$(OutDir)theme.rgs" /Y</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -78,12 +79,13 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalIncludeDirectories>$(ProjectDir)src\lib\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <ObjectFileName>$(IntDir)%(RelativeDir)</ObjectFileName>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -94,7 +96,8 @@
       <AdditionalDependencies>raylib.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>XCOPY "$(ProjectDir)licenses\" "$(OutDir)licenses\" /S /Y</Command>
+      <Command>XCOPY "$(ProjectDir)licenses\" "$(OutDir)licenses\" /S /Y
+COPY "$(ProjectDir)theme.rgs" "$(OutDir)theme.rgs" /Y</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -106,6 +109,7 @@
     <ClInclude Include="src\app_1d_function.hpp" />
     <ClInclude Include="src\app_digit_recognition.hpp" />
     <ClInclude Include="src\endian.hpp" />
+    <ClInclude Include="src\lib\raylib\raygui.h" />
     <ClInclude Include="src\lib\raylib\raylib.h" />
     <ClInclude Include="src\lib\raylib\raymath.h" />
     <ClInclude Include="src\lib\raylib\rlgl.h" />
