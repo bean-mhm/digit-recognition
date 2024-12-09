@@ -35,5 +35,11 @@
     <ClInclude Include="src\app_digit_recognition.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\endian.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\stream.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

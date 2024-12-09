@@ -103,7 +103,9 @@
   <ItemGroup>
     <ClInclude Include="src\app_1d_function.hpp" />
     <ClInclude Include="src\app_digit_recognition.hpp" />
+    <ClInclude Include="src\endian.hpp" />
     <ClInclude Include="src\neural.hpp" />
+    <ClInclude Include="src\stream.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
