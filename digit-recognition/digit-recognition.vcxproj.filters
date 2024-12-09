@@ -21,12 +21,18 @@
     <ClCompile Include="src\app_1d_function.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\app_digit_recognition.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\app_1d_function.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\neural.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\app_digit_recognition.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

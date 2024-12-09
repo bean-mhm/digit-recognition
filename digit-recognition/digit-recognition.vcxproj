@@ -97,10 +97,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\app_1d_function.cpp" />
+    <ClCompile Include="src\app_digit_recognition.cpp" />
     <ClCompile Include="src\main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\app_1d_function.hpp" />
+    <ClInclude Include="src\app_digit_recognition.hpp" />
     <ClInclude Include="src\neural.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
