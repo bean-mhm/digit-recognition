@@ -14,6 +14,8 @@
 #include <cmath>
 #include <cstdint>
 
+#include "lib/raylib/raylib.h"
+
 #include "neural.hpp"
 #include "endian.hpp"
 #include "stream.hpp"
@@ -51,6 +53,10 @@ namespace digitrec
     private:
         std::vector<DigitSample> train_samples;
         std::vector<DigitSample> test_samples;
+
+        void init();
+        void loop();
+        void cleanup();
 
         void load_digit_samples(
             std::string_view images_path,
