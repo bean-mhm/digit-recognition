@@ -1,12 +1,13 @@
 #include <iostream>
 
 #include "app_1d_function.hpp"
+#include "app_digit_recognition.hpp"
 
 int main()
 {
     try
     {
-        digitrec::App1dFunction app;
+        digitrec::AppDigitRecognition app;
         app.run();
     }
     catch (const std::exception& e)
