@@ -101,10 +101,6 @@ namespace neural
 
     // T is the type used to store numerical values. A typical value may
     // be `float`.
-    // 
-    // n_layers is the number of layers. it should be at least 2 to represent an
-    // input and an output layer.
-    // 
     // if store_gradients is false, then the network can only be used for
     // prediction or evaluation, and not training. if store_gradients is true,
     // weight and bias gradients will be stored right next to their
@@ -113,28 +109,34 @@ namespace neural
     // each layer, an extra array of values will be stored for representing the
     // weighted sum that we got in each node in a forward pass. we'll call these
     // the pre-activation values.
-    template<typename T, size_t n_layers, bool store_gradients>
+    template<typename T, bool store_gradients>
     class Network
     {
     public:
+        // layer_sizes representing the topology of the network by containing
+        // the number of nodes (neurons) in each layer. the size of this vector
+        // represents the number of layers.
+        // 
+        // activation_fns provides activation functions for all layers except
+        // the first one (input layer), so its size should be one less than that
+        // of layer_sizes.
+        //
+        // activation_derivs provides derivaties of the activation functions.
         Network(
-            const std::array<size_t, n_layers>& layer_sizes,
-
-            const std::array<std::function<T(T)>, n_layers - 1u>&
-            activation_fns,
-
-            const std::array<std::function<T(T)>, n_layers - 1u>&
-            activation_derivs
+            const std::vector<size_t>& layer_sizes,
+            const std::vector<std::function<T(T)>>& activation_fns,
+            const std::vector<std::function<T(T)>>& activation_derivs
         )
-            : _layer_sizes(layer_sizes),
+            : _n_layers(layer_sizes.size()),
+            _layer_sizes(layer_sizes),
             _activation_fns(activation_fns),
             _activation_derivs(activation_derivs)
         {
-            if constexpr (n_layers < 2u)
+            if (_n_layers < 2u)
             {
                 throw std::invalid_argument(
-                    "n_layers should be at least 2 to represent an input and "
-                    "an output layer."
+                    "there should be at least 2 layers to represent an input "
+                    "and an output layer."
                 );
             }
 
@@ -148,6 +150,22 @@ namespace neural
                 }
             }
 
+            if (_activation_fns.size() != _n_layers - 1u)
+            {
+                throw std::invalid_argument(
+                    "the number of activation functions must be one less than "
+                    "the number of layers."
+                );
+            }
+
+            if (_activation_derivs.size() != _n_layers - 1u)
+            {
+                throw std::invalid_argument(
+                    "the number of activation derivatie functions must be one "
+                    "less than the number of layers."
+                );
+            }
+
             // if store_gradients is true, weight and bias gradients will be
             // stored right next to their corresponding weight or bias. for
             // example, the bias gradient of some node will be stored sizeof(T)
@@ -156,7 +174,7 @@ namespace neural
             size_t n_data = _layer_sizes[0];
             if constexpr (store_gradients)
             {
-                for (size_t l = 1u; l < n_layers; l++)
+                for (size_t l = 1u; l < _n_layers; l++)
                 {
                     size_t n_nodes = _layer_sizes[l];
                     n_data += n_nodes // values
@@ -168,7 +186,7 @@ namespace neural
             }
             else
             {
-                for (size_t l = 1u; l < n_layers; l++)
+                for (size_t l = 1u; l < _n_layers; l++)
                 {
                     size_t n_nodes = _layer_sizes[l];
                     n_data += n_nodes // values
@@ -179,12 +197,12 @@ namespace neural
             data.resize(n_data, (T)0);
         }
 
-        constexpr size_t num_layers() const
+        constexpr size_t n_layers() const
         {
-            return n_layers;
+            return _n_layers;
         }
 
-        constexpr const std::array<size_t, n_layers>& layer_sizes() const
+        constexpr const std::vector<size_t>& layer_sizes() const
         {
             return _layer_sizes;
         }
@@ -196,7 +214,7 @@ namespace neural
 
         constexpr const size_t output_size() const
         {
-            return layer_sizes()[n_layers - 1u];
+            return layer_sizes()[_n_layers - 1u];
         }
 
         // activation function for a hidden layer or the output layer
@@ -204,7 +222,7 @@ namespace neural
             size_t layer_idx
         ) const
         {
-            if (layer_idx < 1u || layer_idx >= n_layers)
+            if (layer_idx < 1u || layer_idx >= _n_layers)
             {
                 throw std::invalid_argument("invalid layer index");
             }
@@ -217,7 +235,7 @@ namespace neural
             size_t layer_idx
         ) const
         {
-            if (layer_idx < 1u || layer_idx >= n_layers)
+            if (layer_idx < 1u || layer_idx >= _n_layers)
             {
                 throw std::invalid_argument("invalid layer index");
             }
@@ -227,7 +245,7 @@ namespace neural
         // node activation values in a layer
         constexpr std::span<T> values(size_t layer_idx)
         {
-            if (layer_idx >= n_layers)
+            if (layer_idx >= _n_layers)
             {
                 throw std::invalid_argument("invalid layer index");
             }
@@ -280,7 +298,7 @@ namespace neural
                 );
             }
 
-            if (layer_idx < 1u || layer_idx >= n_layers)
+            if (layer_idx < 1u || layer_idx >= _n_layers)
             {
                 throw std::invalid_argument("invalid layer index");
             }
@@ -312,14 +330,14 @@ namespace neural
         // node values in the last layer
         constexpr std::span<T> output_values()
         {
-            return values(n_layers - 1);
+            return values(_n_layers - 1);
         }
 
         // node biases in a layer. if store_gradients is true, then every bias
         // value will be immediately followed by its gradient.
         constexpr std::span<T> biases(size_t layer_idx)
         {
-            if (layer_idx < 1u || layer_idx >= n_layers)
+            if (layer_idx < 1u || layer_idx >= _n_layers)
             {
                 throw std::invalid_argument("invalid layer index");
             }
@@ -367,7 +385,7 @@ namespace neural
         // then every weight value will be immediately followed by its gradient.
         constexpr std::span<T> weights(size_t layer_idx, size_t node_idx)
         {
-            if (layer_idx < 1u || layer_idx >= n_layers)
+            if (layer_idx < 1u || layer_idx >= _n_layers)
             {
                 throw std::invalid_argument("invalid layer index");
             }
@@ -444,7 +462,7 @@ namespace neural
         {
             if constexpr (store_gradients)
             {
-                for (size_t l = 1u; l < n_layers; l++)
+                for (size_t l = 1u; l < _n_layers; l++)
                 {
                     auto b = biases(l);
                     for (size_t i = 0u; i < b.size(); i += 2u)
@@ -464,7 +482,7 @@ namespace neural
             }
             else
             {
-                for (size_t l = 1u; l < num_layers(); l++)
+                for (size_t l = 1u; l < _n_layers; l++)
                 {
                     for (auto& v : biases(l))
                     {
@@ -561,7 +579,7 @@ namespace neural
                 );
             }
 
-            if (layer_idx < 1u || layer_idx >= n_layers)
+            if (layer_idx < 1u || layer_idx >= _n_layers)
             {
                 throw std::invalid_argument("invalid layer index");
             }
@@ -592,7 +610,7 @@ namespace neural
                 );
             }
 
-            for (size_t l = 1u; l < n_layers; l++)
+            for (size_t l = 1u; l < _n_layers; l++)
             {
                 auto b = biases(l);
                 for (size_t i = 1u; i < b.size(); i += 2u)
@@ -616,7 +634,7 @@ namespace neural
         // all pre-activation values as well.
         void forward_pass()
         {
-            for (size_t layer_idx = 1u; layer_idx < n_layers; layer_idx++)
+            for (size_t layer_idx = 1u; layer_idx < _n_layers; layer_idx++)
             {
                 auto prev_layer_values = values(layer_idx - 1u);
                 auto this_layer_values = values(layer_idx);
@@ -743,7 +761,7 @@ namespace neural
             // current layer's dcost_dz and the other will be the previous
             // layer's, and the order will swap after every iteration.
             size_t max_layer_size = 1u;
-            for (size_t l = 1u; l < n_layers; l++)
+            for (size_t l = 1u; l < _n_layers; l++)
             {
                 max_layer_size = std::max(max_layer_size, layer_sizes()[l]);
             }
@@ -769,12 +787,12 @@ namespace neural
             // pre-activation values in the output layer's nodes (dcost_dz).
             {
                 auto predicted_output = output_values();
-                auto output_layer_pre_activ = pre_activ(n_layers - 1u);
+                auto output_layer_pre_activ = pre_activ(_n_layers - 1u);
 
                 // gradient of the activation function with respect to the
                 // output layer's pre-activation values. (this is a function
                 // pointer).
-                const auto& dact_dz = activation_deriv(n_layers - 1u);
+                const auto& dact_dz = activation_deriv(_n_layers - 1u);
 
                 for (size_t n = 0u; n < output_size(); n++)
                 {
@@ -790,7 +808,7 @@ namespace neural
             }
 
             // start from the last layer (output layer) and go backward
-            for (ptrdiff_t l = n_layers - 1u; l >= 1; l--)
+            for (ptrdiff_t l = _n_layers - 1u; l >= 1; l--)
             {
                 // gradient of the cost function with respect to the
                 // pre-activation values in the current and previous layers
@@ -941,7 +959,7 @@ namespace neural
             // examples
             const T inv_n_data_points = (T)1 / (T)data_points.size();
 
-            for (size_t l = 1u; l < n_layers; l++)
+            for (size_t l = 1u; l < _n_layers; l++)
             {
                 auto b = biases(l);
                 for (size_t i = 0u; i < b.size(); i += 2u)
@@ -1019,10 +1037,10 @@ namespace neural
         }
 
     private:
-        std::array<size_t, n_layers> _layer_sizes;
-        std::array<std::function<T(T)>, n_layers - 1u> _activation_fns;
-        std::array<std::function<T(T)>, n_layers - 1u>
-            _activation_derivs;
+        size_t _n_layers;
+        std::vector<size_t> _layer_sizes;
+        std::vector<std::function<T(T)>> _activation_fns;
+        std::vector<std::function<T(T)>> _activation_derivs;
 
         std::vector<T> data;
 

@@ -32,7 +32,7 @@ namespace digitrec
             neural::leaky_relu_deriv<float, .01f>;
 
         std::mt19937 rng;
-        neural::Network<float, 4, true> net;
+        neural::Network<float, true> net;
 
         float test_cost();
 
