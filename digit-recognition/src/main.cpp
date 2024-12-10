@@ -13,6 +13,7 @@ int main()
     catch (const std::exception& e)
     {
         std::cerr << e.what() << '\n';
+        std::cin.get();
         return 1;
     }
 }

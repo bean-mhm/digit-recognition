@@ -1,57 +1,168 @@
 #include "app_digit_recognition.hpp"
 
-#define RAYGUI_IMPLEMENTATION
-#include "lib/raylib/raygui.h"
-
 namespace digitrec
 {
-
-    AppDigitRecognition::AppDigitRecognition()
-    {}
 
     void AppDigitRecognition::run()
     {
         init();
-        while (!WindowShouldClose())
+        while (!glfwWindowShouldClose(window))
         {
             loop();
         }
         cleanup();
     }
 
+    static void glfw_error_callback(int error, const char* description)
+    {
+        throw std::runtime_error(std::format(
+            "GLFW error {}: {}",
+            error,
+            description
+        ));
+    }
+
     void AppDigitRecognition::init()
     {
+        // initialize GLFW
+        glfwSetErrorCallback(glfw_error_callback);
+        if (!glfwInit())
+            throw std::runtime_error("failed to initialize GLFW");
+
+        // OpenGL 3.2 + GLSL 150
+        static constexpr auto glsl_version = "#version 150";
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
+        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // 3.2+
+        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // required on Mac
+
+        // create window
+        window = glfwCreateWindow(
+            WINDOW_SIZE,
+            WINDOW_SIZE,
+            WINDOW_TITLE,
+            nullptr,
+            nullptr
+        );
+        if (!window)
+        {
+            glfwTerminate();
+            throw std::runtime_error("failed to create window");
+        }
+
+        // make the window's context current and enable VSync
+        glfwMakeContextCurrent(window);
+        glfwSwapInterval(1);
+
+        // initialize GLEW for loading OpenGL extensions
+        glewExperimental = GL_TRUE;
+        GLenum glew_init_result = glewInit();
+        if (glew_init_result != GLEW_OK)
+        {
+            throw std::runtime_error(std::format(
+                "failed to initialize GLEW: {}",
+                glew_init_result
+            ));
+        }
+
+        // setup Dear ImGui context
+        IMGUI_CHECKVERSION();
+        ImGui::CreateContext();
+        io = &ImGui::GetIO();
+
+        // enable keyboard and gamepad
+        io->ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+        io->ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+
+        // load style
+        ImGui::StyleColorsDark();
+
+        // setup backends
+        ImGui_ImplGlfw_InitForOpenGL(window, true);
+        ImGui_ImplOpenGL3_Init(glsl_version);
+
+        // load fonts
+        font = io->Fonts->AddFontFromFileTTF(FONT_PATH, 18.f);
+        if (!font)
+        {
+            throw std::runtime_error("failed to load fonts");
+        }
+
+        // load digit dataset
         load_digit_samples(TRAIN_IMAGES_PATH, TRAIN_LABELS_PATH, train_samples);
         load_digit_samples(TEST_IMAGES_PATH, TEST_LABELS_PATH, test_samples);
-
-        SetTraceLogLevel(LOG_ERROR);
-        SetWindowState(FLAG_VSYNC_HINT | FLAG_WINDOW_HIGHDPI);
-        InitWindow(WINDOW_SIZE, WINDOW_SIZE, "Digit Recognition - bean-mhm");
     }
 
     void AppDigitRecognition::loop()
     {
-        BeginDrawing();
-        ClearBackground({ 11, 25, 36, 255 });
+        // poll and handle events (inputs, window resize, etc.)
+        // you can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to
+        // tell if dear imgui wants to use your inputs.
+        // - when io.WantCaptureMouse is true, do not dispatch mouse input data
+        //   to your main application, or clear/overwrite your copy of the mouse
+        //   data.
+        // - when io.WantCaptureKeyboard is true, do not dispatch keyboard input
+        //   data to your main application, or clear/overwrite your copy of the
+        //   keyboard data.
+        // generally you may always pass all inputs to dear imgui, and hide them
+        // from your application based on those two flags.
+        glfwPollEvents();
+        if (glfwGetWindowAttrib(window, GLFW_ICONIFIED) != 0)
+        {
+            ImGui_ImplGlfw_Sleep(10);
+            return;
+        }
 
-        DrawText("to be implementted...", 60, 100, 20, LIGHTGRAY);
+        // start the Dear ImGui frame
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
 
-        GuiLoadStyle("./theme.rgs");
-        GuiButton({
-            .05f * F_WINDOW_SIZE,
-            .85f * F_WINDOW_SIZE,
-            .9f * F_WINDOW_SIZE,
-            .1f * F_WINDOW_SIZE
-            },
-            "Train"
-        );
+        {
+            static float f = 0.0f;
+            static int counter = 0;
 
-        EndDrawing();
+            ImGui::Begin("Hello, world!");
+
+            ImGui::Text("This is some useful text.");
+
+            ImGui::SliderFloat("float", &f, 0.0f, 1.0f);
+
+            if (ImGui::Button("Button"))
+                counter++;
+            ImGui::SameLine();
+            ImGui::Text("counter = %d", counter);
+
+            ImGui::Text(
+                "Application average %.3f ms/frame (%.1f FPS)",
+                1000.f / io->Framerate,
+                io->Framerate
+            );
+
+            ImGui::End();
+        }
+
+        // rendering
+        ImGui::Render();
+        int display_w, display_h;
+        glfwGetFramebufferSize(window, &display_w, &display_h);
+        glViewport(0, 0, display_w, display_h);
+        glClearColor(COLOR_BG.x, COLOR_BG.y, COLOR_BG.z, COLOR_BG.w);
+        glClear(GL_COLOR_BUFFER_BIT);
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+        // swap front and back buffers
+        glfwSwapBuffers(window);
     }
 
     void AppDigitRecognition::cleanup()
     {
-        CloseWindow();
+        ImGui_ImplOpenGL3_Shutdown();
+        ImGui_ImplGlfw_Shutdown();
+        ImGui::DestroyContext();
+
+        glfwDestroyWindow(window);
+        glfwTerminate();
     }
 
     void AppDigitRecognition::load_digit_samples(
