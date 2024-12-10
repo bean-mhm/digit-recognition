@@ -13,11 +13,17 @@ namespace stream
     {
         if (!std::filesystem::exists(path))
         {
-            throw std::runtime_error("can't open a non-existent file");
+            throw std::runtime_error(std::format(
+                "can't open a non-existent file (\"{}\")",
+                path.generic_string()
+            ));
         }
         if (std::filesystem::is_directory(path))
         {
-            throw std::runtime_error("can't open a directory as a binary file");
+            throw std::runtime_error(std::format(
+                "can't open a directory as a binary file (\"{}\")",
+                path.generic_string()
+            ));
         }
         return std::fstream(path, std::ios::in | std::ios::binary);
     }

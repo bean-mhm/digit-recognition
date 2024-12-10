@@ -18,10 +18,10 @@
     <ClCompile Include="src\main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\app_1d_function.cpp">
+    <ClCompile Include="src\app_curve_fitting.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\app_digit_recognition.cpp">
+    <ClCompile Include="src\app_digit_rec.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\lib\imgui\imgui_impl_glfw.cpp">
@@ -50,13 +50,13 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\app_1d_function.hpp">
+    <ClInclude Include="src\app_curve_fitting.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\neural.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\app_digit_recognition.hpp">
+    <ClInclude Include="src\app_digit_rec.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\endian.hpp">

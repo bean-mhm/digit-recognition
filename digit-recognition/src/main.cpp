@@ -1,13 +1,13 @@
 #include <iostream>
 
-#include "app_1d_function.hpp"
-#include "app_digit_recognition.hpp"
+#include "app_curve_fitting.hpp"
+#include "app_digit_rec.hpp"
 
 int main()
 {
     try
     {
-        digitrec::AppDigitRecognition app;
+        digit_rec::App app;
         app.run();
     }
     catch (const std::exception& e)

@@ -1,6 +1,6 @@
-#include "app_1d_function.hpp"
+#include "app_curve_fitting.hpp"
 
-namespace digitrec
+namespace curve_fitting
 {
 
     static float target_fn(float v)
@@ -33,7 +33,7 @@ namespace digitrec
         }
     }
 
-    App1dFunction::App1dFunction()
+    App::App()
         : rng(SEED),
         net(
             { 1, 24, 24, 1 },
@@ -42,7 +42,7 @@ namespace digitrec
         )
     {}
 
-    void App1dFunction::run()
+    void App::run()
     {
         // randomize weights and biases
         net.randomize_xavier_normal(rng, -.01f, .01f);
@@ -78,7 +78,7 @@ namespace digitrec
         std::cout << std::format("test cost: {:.4f}\n", test_cost());
     }
 
-    float App1dFunction::test_cost()
+    float App::test_cost()
     {
         std::vector<float> data;
         std::vector<std::span<float>> spans;

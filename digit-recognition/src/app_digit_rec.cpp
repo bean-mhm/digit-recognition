@@ -1,9 +1,9 @@
-#include "app_digit_recognition.hpp"
+#include "app_digit_rec.hpp"
 
-namespace digitrec
+namespace digit_rec
 {
 
-    void AppDigitRecognition::run()
+    void App::run()
     {
         init();
         while (!glfwWindowShouldClose(window))
@@ -22,7 +22,30 @@ namespace digitrec
         ));
     }
 
-    void AppDigitRecognition::init()
+    void App::init()
+    {
+        load_digit_samples(TRAIN_IMAGES_PATH, TRAIN_LABELS_PATH, train_samples);
+        load_digit_samples(TEST_IMAGES_PATH, TEST_LABELS_PATH, test_samples);
+
+        init_ui();
+    }
+
+    void App::loop()
+    {
+        draw_ui();
+    }
+
+    void App::cleanup()
+    {
+        ImGui_ImplOpenGL3_Shutdown();
+        ImGui_ImplGlfw_Shutdown();
+        ImGui::DestroyContext();
+
+        glfwDestroyWindow(window);
+        glfwTerminate();
+    }
+
+    void App::init_ui()
     {
         // initialize GLFW
         glfwSetErrorCallback(glfw_error_callback);
@@ -82,18 +105,14 @@ namespace digitrec
         ImGui_ImplOpenGL3_Init(glsl_version);
 
         // load fonts
-        font = io->Fonts->AddFontFromFileTTF(FONT_PATH, 18.f);
+        font = io->Fonts->AddFontFromFileTTF(FONT_PATH, 20.f);
         if (!font)
         {
             throw std::runtime_error("failed to load fonts");
         }
-
-        // load digit dataset
-        load_digit_samples(TRAIN_IMAGES_PATH, TRAIN_LABELS_PATH, train_samples);
-        load_digit_samples(TEST_IMAGES_PATH, TEST_LABELS_PATH, test_samples);
     }
 
-    void AppDigitRecognition::loop()
+    void App::draw_ui()
     {
         // poll and handle events (inputs, window resize, etc.)
         // you can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to
@@ -118,26 +137,36 @@ namespace digitrec
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
+        // layout
         {
-            static float f = 0.0f;
-            static int counter = 0;
-
-            ImGui::Begin("Hello, world!");
-
-            ImGui::Text("This is some useful text.");
-
-            ImGui::SliderFloat("float", &f, 0.0f, 1.0f);
-
-            if (ImGui::Button("Button"))
-                counter++;
-            ImGui::SameLine();
-            ImGui::Text("counter = %d", counter);
-
-            ImGui::Text(
-                "Application average %.3f ms/frame (%.1f FPS)",
-                1000.f / io->Framerate,
-                io->Framerate
+            ImGui::SetNextWindowPos({ .03f * WINDOW_SIZE, .03 * WINDOW_SIZE });
+            ImGui::SetNextWindowSize({ .94f * WINDOW_SIZE, .94 * WINDOW_SIZE });
+            ImGui::Begin(
+                "##",
+                nullptr,
+                ImGuiWindowFlags_NoTitleBar
+                | ImGuiWindowFlags_NoResize
+                | ImGuiWindowFlags_NoMove
+                | ImGuiWindowFlags_NoScrollbar
+                | ImGuiWindowFlags_NoCollapse
+                | ImGuiWindowFlags_NoBackground
+                | ImGuiWindowFlags_NoSavedSettings
             );
+
+            switch (ui_mode)
+            {
+            case digit_rec::UiMode::Settings:
+                layout_settings();
+                break;
+            case digit_rec::UiMode::Training:
+                layout_training();
+                break;
+            case digit_rec::UiMode::Drawboard:
+                layout_drawboard();
+                break;
+            default:
+                break;
+            }
 
             ImGui::End();
         }
@@ -155,17 +184,69 @@ namespace digitrec
         glfwSwapBuffers(window);
     }
 
-    void AppDigitRecognition::cleanup()
+    void App::layout_settings()
     {
-        ImGui_ImplOpenGL3_Shutdown();
-        ImGui_ImplGlfw_Shutdown();
-        ImGui::DestroyContext();
+        ImGui::BeginTable(
+            "##maintable",
+            2,
+            ImGuiTableFlags_NoBordersInBody
+            | ImGuiTableFlags_NoSavedSettings
+            | ImGuiTableFlags_NoBordersInBody
+            | ImGuiTableFlags_SizingStretchSame
+            | ImGuiTableFlags_NoPadInnerX
+            | ImGuiTableFlags_NoPadOuterX
+        );
 
-        glfwDestroyWindow(window);
-        glfwTerminate();
+        ImGui::TableNextRow();
+
+        ImGui::TableNextColumn();
+        ImGui::Text("Layer Sizes");
+
+        ImGui::TableNextColumn();
+        ImGui::Text("Learning Rate");
+
+        ImGui::TableNextRow();
+
+        ImGui::TableNextColumn();
+
+        static char val_layer_sizes[64]{};
+        static bool init_val_layer_sizes = false;
+        if (!init_val_layer_sizes)
+        {
+            init_val_layer_sizes = true;
+            sprintf_s(
+                val_layer_sizes,
+                sizeof(val_layer_sizes) / sizeof(char),
+                "%zu, 16, 16, 10",
+                N_DIGIT_VALUES
+            );
+        }
+        ImGui::InputText("##layersizes", val_layer_sizes, 64);
+
+        ImGui::TableNextColumn();
+
+        static float val_learning_rate = .01f;
+        ImGui::SliderFloat(
+            "##learnrate",
+            &val_learning_rate,
+            0.f,
+            1.f,
+            "%.4f",
+            ImGuiSliderFlags_AlwaysClamp
+            | ImGuiSliderFlags_Logarithmic
+            | ImGuiSliderFlags_NoRoundToFormat
+        );
+
+        ImGui::EndTable();
     }
 
-    void AppDigitRecognition::load_digit_samples(
+    void App::layout_training()
+    {}
+
+    void App::layout_drawboard()
+    {}
+
+    void App::load_digit_samples(
         std::string_view images_path,
         std::string_view labels_path,
         std::vector<DigitSample>& out_samples

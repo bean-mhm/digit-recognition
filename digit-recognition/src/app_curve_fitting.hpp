@@ -14,13 +14,13 @@
 
 #include "neural.hpp"
 
-namespace digitrec
+namespace curve_fitting
 {
 
-    class App1dFunction
+    class App
     {
     public:
-        App1dFunction();
+        App();
 
         void run();
 
