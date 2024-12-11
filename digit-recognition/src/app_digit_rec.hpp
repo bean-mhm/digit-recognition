@@ -34,7 +34,7 @@ namespace digit_rec
     static constexpr auto WINDOW_TITLE = "Digit Recognition - bean-mhm";
 
     // width and height of the window
-    static constexpr uint32_t WINDOW_WIDTH = 720;
+    static constexpr uint32_t WINDOW_WIDTH = 800;
     static constexpr uint32_t WINDOW_HEIGHT = WINDOW_WIDTH * 3u / 4u;
 
     // the amount of horizontal and vertical padding in the window, proportional
