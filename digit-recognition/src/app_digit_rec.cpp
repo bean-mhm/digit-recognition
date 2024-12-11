@@ -614,6 +614,65 @@ namespace digit_rec
         }
     }
 
+    // read digit sample data from src_digit and render a randomly transformed
+    // version of it into dst_digit. both arrays are expected to contain at
+    // least N_DIGIT_VALUES values.
+    template<typename RandomEngine>
+    void apply_random_transform(
+        RandomEngine& engine,
+        float* src_digit,
+        float* dst_digit
+    )
+    {
+        std::uniform_real_distribution<float> dist(0.f, 1.f);
+
+        static constexpr float DEG2RAD = .0174532925199f;
+
+        const float scale = .9f + .2f * dist(engine);
+        const float inv_scale = 1.f / scale;
+
+        const float rotation = (-4.f + 8.f * dist(engine)) * DEG2RAD;
+        const float sin_a = std::sin(rotation);
+        const float cos_a = std::cos(rotation);
+
+        const float offset_x = -.1f + .2f * dist(engine);
+        const float offset_y = -.1f + .2f * dist(engine);
+
+        static constexpr float HALF_DIGIT_WIDTH = .5f * (float)DIGIT_WIDTH;
+        static constexpr float HALF_DIGIT_HEIGHT = .5f * (float)DIGIT_HEIGHT;
+        static constexpr float DIGIT_MAX_DIM_INV =
+            1.f / (float)std::max(DIGIT_WIDTH, DIGIT_HEIGHT);
+
+        for (int32_t y = 0; y < DIGIT_HEIGHT; y++)
+        {
+            for (int32_t x = 0; x < DIGIT_WIDTH; x++)
+            {
+                // UV coordinates from -1 to +1, (0, 0) is center.
+                float u = (float)x + .5f - HALF_DIGIT_WIDTH;
+                float v = (float)y + .5f - HALF_DIGIT_HEIGHT;
+                u *= DIGIT_MAX_DIM_INV * 2.f;
+                v *= DIGIT_MAX_DIM_INV * 2.f;
+
+                // offset (third transformation)
+                u -= offset_x;
+                v -= offset_y;
+
+                // rotate (second transformation)
+                float u2 = (u * cos_a) + (v * sin_a);
+                float v2 = (v * cos_a) - (u * sin_a);
+
+                // scale (first transformation)
+                u2 *= inv_scale;
+                v2 *= inv_scale;
+
+                // (find an intuition for why the order is reversed)
+
+                // sample from src_digit with bilinear interpolation.
+                TODO;
+            }
+        }
+    }
+
     std::optional<std::string> App::start_training()
     {
         // parse and verify layer sizes
@@ -770,11 +829,13 @@ namespace digit_rec
                     );
                 }
 
-                std::mt19937 rng(val_seed);
+                std::mt19937 rng_pick_sample(val_seed);
                 std::uniform_int_distribution<size_t> sizet_dist(
                     0,
                     train_samples.size() - 1u
                 );
+
+                std::mt19937 rng_random_transforms(val_seed);
 
                 while (!stoken.stop_requested())
                 {
@@ -792,12 +853,30 @@ namespace digit_rec
                             + N_DIGIT_VALUES;
 
                         // randomly pick a digit sample from the dataset
-                        const auto& samp = train_samples[sizet_dist(rng)];
+                        const auto& samp =
+                            train_samples[sizet_dist(rng_pick_sample)];
 
                         // update input data
                         for (size_t i = 0; i < N_DIGIT_VALUES; i++)
                         {
                             input_data[i] = (float)samp.values[i] / 255.f;
+                        }
+
+                        // randomly transform input data if needed
+                        if (val_random_transform)
+                        {
+                            float digit_data_copy[N_DIGIT_VALUES];
+                            std::copy(
+                                input_data,
+                                input_data + N_DIGIT_VALUES,
+                                digit_data_copy
+                            );
+
+                            apply_random_transform(
+                                rng_random_transforms,
+                                digit_data_copy,
+                                input_data
+                            );
                         }
 
                         // update expected output data
