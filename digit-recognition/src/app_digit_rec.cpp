@@ -419,23 +419,76 @@ namespace digit_rec
             &val_random_transform
         );
 
-        ImGui::Dummy({ 1.f, scaled(.14f) });
+        ImGui::Dummy({ 1.f, scaled(.15f) });
         ImGui::NewLine();
 
         //
 
         ImGui::SameLine(COLUMN_0_START);
-        ImGui::Button(
+        if (ImGui::Button(
             "Train",
             {
                 scaled(1.f - 2.f * WINDOW_PAD),
                 scaled(.1f)
             }
-        );
+        ))
+        {
+            ui_mode = UiMode::Training;
+        }
     }
 
     void App::layout_training()
-    {}
+    {
+        static constexpr float PADDED_WIDTH = scaled(
+            .5f - COLUMN_SPACING - WINDOW_PAD
+        );
+        static constexpr float CONTENT_START = scaled(WINDOW_PAD);
+        static constexpr float CONTENT_WIDTH = scaled(
+            1.f - 2.f * WINDOW_PAD
+        );
+
+        ImGui::SameLine(CONTENT_START);
+        ImGui::SetNextItemWidth(CONTENT_WIDTH);
+        if (accuracy_history.empty())
+        {
+            ImGui::Text("Accuracy");
+        }
+        else
+        {
+            ImGui::Text("Accuracy: %.2f", accuracy_history.back());
+        }
+
+        ImGui::NewLine();
+
+        //
+
+        ImGui::SameLine(CONTENT_START);
+        ImGui::SetNextItemWidth(CONTENT_WIDTH);
+        ImGui::PlotLines(
+            "##accuracyplot",
+            accuracy_history.data(),
+            (int)accuracy_history.size(),
+            0, (const char*)0, 1.f, 1.f,
+            ImVec2{ CONTENT_WIDTH, scaled(.48f) }
+        );
+
+        ImGui::NewLine();
+        ImGui::NewLine();
+
+        //
+
+        ImGui::SameLine(CONTENT_START);
+        if (ImGui::Button(
+            "Stop",
+            {
+                CONTENT_WIDTH,
+                scaled(.1f)
+            }
+        ))
+        {
+            ui_mode = UiMode::Settings;
+        }
+    }
 
     void App::layout_drawboard()
     {}

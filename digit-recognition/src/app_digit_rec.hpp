@@ -106,8 +106,7 @@ namespace digit_rec
         ImGuiIO* io = nullptr;
         ImFont* font = nullptr;
 
-        UiMode ui_mode
-            = UiMode::Settings;
+        UiMode ui_mode = UiMode::Training;
 
         char val_layer_sizes[64]{};
         float val_learning_rate = .01f;
@@ -119,6 +118,9 @@ namespace digit_rec
 
         std::vector<DigitSample> train_samples;
         std::vector<DigitSample> test_samples;
+
+        // accuracy of the network over time
+        std::vector<float> accuracy_history;
 
         void init_ui();
         void draw_ui();
