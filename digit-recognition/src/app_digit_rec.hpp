@@ -5,7 +5,6 @@
 #include <filesystem>
 #include <string>
 #include <format>
-#include <variant>
 #include <optional>
 #include <array>
 #include <vector>
@@ -44,6 +43,9 @@ namespace digit_rec
     // the amount of horizontal and vertical padding in the window, proportional
     // to the window width.
     static constexpr float WINDOW_PAD = .04f;
+
+    // amount of padding in popup modals
+    static constexpr float DIALOG_PAD = .03f;
 
     // spacing between the 2 columns in the settings layout, proportional to the
     // window height.

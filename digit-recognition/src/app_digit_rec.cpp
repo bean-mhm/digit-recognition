@@ -72,7 +72,7 @@ namespace digit_rec
         style.ColumnsMinSpacing = 6.0f;
         style.ScrollbarSize = 12.0f;
         style.ScrollbarRounding = 20.0f;
-        style.GrabMinSize = 26.0f;
+        style.GrabMinSize = 28.0f;
         style.GrabRounding = 20.0f;
         style.TabRounding = 4.0f;
         style.TabBorderSize = 1.0f;
@@ -133,7 +133,7 @@ namespace digit_rec
         style.Colors[ImGuiCol_NavHighlight] = ImVec4(0.133452445268631f, 0.5546011924743652f, 0.6909871101379395f, 1.0f);
         style.Colors[ImGuiCol_NavWindowingHighlight] = ImVec4(0.133452445268631f, 0.5546011924743652f, 0.6909871101379395f, 1.0f);
         style.Colors[ImGuiCol_NavWindowingDimBg] = ImVec4(0.5254902243614197f, 0.0f, 0.0f, 0.3294117748737335f);
-        style.Colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.0f, 0.0f, 0.0f, 0.3294117748737335f);
+        style.Colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.0f, 0.0f, 0.0f, 0.5098039507865906f);
     }
 
     void App::init_ui()
@@ -400,7 +400,9 @@ namespace digit_rec
             &val_batch_size,
             1.f,
             &min_batch_size,
-            &max_batch_size
+            &max_batch_size,
+            nullptr,
+            ImGuiSliderFlags_AlwaysClamp
         );
 
         ImGui::SameLine(COLUMN_1_START);
@@ -424,6 +426,8 @@ namespace digit_rec
 
         //
 
+        static std::string error_text = "";
+
         ImGui::SameLine(COLUMN_0_START);
         if (ImGui::Button(
             "Train",
@@ -433,7 +437,49 @@ namespace digit_rec
             }
         ))
         {
-            start_training();
+            auto result = start_training();
+            if (result.has_value())
+            {
+                error_text = result.value();
+                ImGui::OpenPopup("Error");
+            }
+        }
+
+        //
+
+        ImGui::SetNextWindowSize({ scaled(.7f), 0.f });
+        ImGui::SetNextWindowPos(
+            { ImGui::GetWindowSize().x * .5f, ImGui::GetWindowSize().y * .5f },
+            0,
+            { .5f, .5f }
+        );
+        if (ImGui::BeginPopupModal(
+            "Error",
+            nullptr,
+            ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove
+        ))
+        {
+            ImGui::SameLine(scaled(DIALOG_PAD));
+            ImGui::SetNextItemWidth(
+                ImGui::GetWindowSize().x - 2.f * scaled(DIALOG_PAD)
+            );
+            ImGui::TextWrapped(error_text.c_str());
+
+            ImGui::NewLine();
+
+            ImGui::SameLine(scaled(DIALOG_PAD));
+            if (ImGui::Button(
+                "Ok",
+                {
+                    ImGui::GetWindowSize().x - 2.f * scaled(DIALOG_PAD),
+                    scaled(.05f)
+                }
+            ))
+            {
+                ImGui::CloseCurrentPopup();
+            }
+
+            ImGui::EndPopup();
         }
     }
 
@@ -592,19 +638,88 @@ namespace digit_rec
         {
             return "Too many layers.";
         }
+        if (layer_sizes[0] != N_DIGIT_VALUES)
+        {
+            return std::format(
+                "The size of the first layer (input) must always be {}.",
+                N_DIGIT_VALUES
+            );
+        }
+        if (layer_sizes.back() != 10)
+        {
+            return "The size of the last layer (output) must always be 10.";
+        }
 
-        // TODO: verify input and output layer sizes
+        // activation functions and their derivatives
+        std::vector<std::function<float(float)>> activation_fns;
+        std::vector<std::function<float(float)>> activation_derivs;
 
-        // verify learning rate
-        // TODO
+        // hidden layer activation functions
+        if (layer_sizes.size() > 2u)
+        {
+            std::function<float(float)> func;
+            std::function<float(float)> deriv;
+            switch (val_hidden_activation)
+            {
+            case digit_rec::ActivationFunc::Relu:
+                func = neural::relu<float>;
+                deriv = neural::relu_deriv<float>;
+                break;
+            case digit_rec::ActivationFunc::LeakyRelu:
+                func = neural::leaky_relu<float, .01f>;
+                deriv = neural::leaky_relu_deriv<float, .01f>;
+                break;
+            case digit_rec::ActivationFunc::Tanh:
+                func = neural::tanh<float>;
+                deriv = neural::tanh_deriv<float>;
+                break;
+            default:
+                break;
+            }
 
+            for (size_t i = 0; i < layer_sizes.size() - 2u; i++)
+            {
+                activation_fns.push_back(func);
+                activation_derivs.push_back(deriv);
+            }
+        }
+
+        // output layer activation function
+        switch (val_output_activation)
+        {
+        case digit_rec::ActivationFunc::Relu:
+            activation_fns.push_back(neural::relu<float>);
+            activation_derivs.push_back(neural::relu_deriv<float>);
+            break;
+        case digit_rec::ActivationFunc::LeakyRelu:
+            activation_fns.push_back(neural::leaky_relu<float, .01f>);
+            activation_derivs.push_back(neural::leaky_relu_deriv<float, .01f>);
+            break;
+        case digit_rec::ActivationFunc::Tanh:
+            activation_fns.push_back(neural::tanh<float>);
+            activation_derivs.push_back(neural::tanh_deriv<float>);
+            break;
+        default:
+            break;
+        }
+
+        // recreate neural network
+        net = std::make_unique<neural::Network<float, true>>(
+            layer_sizes,
+            activation_fns,
+            activation_derivs
+        );
+
+        // clear accuracy history
         accuracy_history.clear();
 
+        // switch UI to training mode
         ui_mode = UiMode::Training;
     }
 
     void App::stop_training()
     {
+        // switch UI to drawboard
         ui_mode = UiMode::Drawboard;
     }
 
