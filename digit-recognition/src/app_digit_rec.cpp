@@ -806,7 +806,7 @@ namespace digit_rec
                             std::chrono::high_resolution_clock::now()
                             - last_accuracy_calc_time
                         ).count();
-                    if (elapsed_ms > 1000)
+                    if (elapsed_ms > 500)
                     {
                         recalculate_accuracy_and_add_to_history();
                         last_accuracy_calc_time =
@@ -837,18 +837,28 @@ namespace digit_rec
         auto net_input = net->input_values();
         auto net_output = net->output_values();
 
-        size_t total_tests = test_samples.size();
+        static constexpr size_t n_tests = 2000;
         size_t n_correct_predict = 0;
 
-        for (const auto& samp : test_samples)
+        std::mt19937 rng(val_seed);
+        std::uniform_int_distribution<size_t> sizet_dist(
+            0,
+            test_samples.size() - 1u
+        );
+
+        for (size_t i = 0; i < n_tests; i++)
         {
+            // pick a random sample from the test dataset
+            const auto& samp = test_samples[sizet_dist(rng)];
+
+            // feed it to the network
             for (size_t i = 0; i < N_DIGIT_VALUES; i++)
             {
                 net_input[i] = (float)samp.values[i] / 255.f;
             }
-
             net->forward_pass();
 
+            // see what the network predicted
             uint32_t predicted_label = 0;
             float max_output = net_output[0];
             for (uint32_t i = 1; i < 10; i++)
@@ -860,6 +870,7 @@ namespace digit_rec
                 }
             }
 
+            // see if the prediction is correct
             if (predicted_label == samp.label)
             {
                 n_correct_predict++;
@@ -867,7 +878,7 @@ namespace digit_rec
         }
 
         accuracy_history.push_back(
-            (float)n_correct_predict / (float)total_tests
+            (float)n_correct_predict / (float)n_tests
         );
     }
 
