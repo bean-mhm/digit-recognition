@@ -60,9 +60,10 @@ namespace digit_rec
         glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // required on Mac
 
         // create window
+        glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
         window = glfwCreateWindow(
-            WINDOW_SIZE,
-            WINDOW_SIZE,
+            WINDOW_WIDTH,
+            WINDOW_HEIGHT,
             WINDOW_TITLE,
             nullptr,
             nullptr
@@ -105,11 +106,16 @@ namespace digit_rec
         ImGui_ImplOpenGL3_Init(glsl_version);
 
         // load fonts
-        font = io->Fonts->AddFontFromFileTTF(FONT_PATH, 20.f);
+        font = io->Fonts->AddFontFromFileTTF(FONT_PATH, FONT_SIZE);
         if (!font)
         {
             throw std::runtime_error("failed to load fonts");
         }
+    }
+
+    static constexpr float scaled(float size)
+    {
+        return size * (float)WINDOW_WIDTH;
     }
 
     void App::draw_ui()
@@ -139,10 +145,16 @@ namespace digit_rec
 
         // layout
         {
-            ImGui::SetNextWindowPos({ .03f * WINDOW_SIZE, .03 * WINDOW_SIZE });
-            ImGui::SetNextWindowSize({ .94f * WINDOW_SIZE, .94 * WINDOW_SIZE });
+            ImGui::SetNextWindowPos({
+                0.f,
+                scaled(.6f * WINDOW_PAD)
+                });
+            ImGui::SetNextWindowSize({
+                (float)WINDOW_WIDTH,
+                (float)WINDOW_HEIGHT - 2.f * scaled(.6f * WINDOW_PAD)
+                });
             ImGui::Begin(
-                "##",
+                "##mainwindow",
                 nullptr,
                 ImGuiWindowFlags_NoTitleBar
                 | ImGuiWindowFlags_NoResize
@@ -186,30 +198,22 @@ namespace digit_rec
 
     void App::layout_settings()
     {
-        ImGui::BeginTable(
-            "##maintable",
-            2,
-            ImGuiTableFlags_NoBordersInBody
-            | ImGuiTableFlags_NoSavedSettings
-            | ImGuiTableFlags_NoBordersInBody
-            | ImGuiTableFlags_SizingStretchSame
-            | ImGuiTableFlags_NoPadInnerX
-            | ImGuiTableFlags_NoPadOuterX
+        static constexpr float COLUMN_WIDTH = scaled(
+            .5f - COLUMN_SPACING - WINDOW_PAD
         );
+        static constexpr float COLUMN_0_START = scaled(WINDOW_PAD);
+        static constexpr float COLUMN_1_START = scaled(.5f + COLUMN_SPACING);
 
-        ImGui::TableNextRow();
-
-        ImGui::TableNextColumn();
+        ImGui::SameLine(COLUMN_0_START);
+        ImGui::SetNextItemWidth(COLUMN_WIDTH);
         ImGui::Text("Layer Sizes");
 
-        ImGui::TableNextColumn();
+        ImGui::SameLine(COLUMN_1_START);
+        ImGui::SetNextItemWidth(COLUMN_WIDTH);
         ImGui::Text("Learning Rate");
 
-        ImGui::TableNextRow();
+        ImGui::NewLine();
 
-        ImGui::TableNextColumn();
-
-        static char val_layer_sizes[64]{};
         static bool init_val_layer_sizes = false;
         if (!init_val_layer_sizes)
         {
@@ -221,11 +225,12 @@ namespace digit_rec
                 N_DIGIT_VALUES
             );
         }
+        ImGui::SameLine(COLUMN_0_START);
+        ImGui::SetNextItemWidth(COLUMN_WIDTH);
         ImGui::InputText("##layersizes", val_layer_sizes, 64);
 
-        ImGui::TableNextColumn();
-
-        static float val_learning_rate = .01f;
+        ImGui::SameLine(COLUMN_1_START);
+        ImGui::SetNextItemWidth(COLUMN_WIDTH);
         ImGui::SliderFloat(
             "##learnrate",
             &val_learning_rate,
@@ -234,10 +239,99 @@ namespace digit_rec
             "%.4f",
             ImGuiSliderFlags_AlwaysClamp
             | ImGuiSliderFlags_Logarithmic
-            | ImGuiSliderFlags_NoRoundToFormat
         );
 
-        ImGui::EndTable();
+        ImGui::NewLine();
+        ImGui::NewLine();
+
+        //
+
+        ImGui::SameLine(COLUMN_0_START);
+        ImGui::SetNextItemWidth(COLUMN_WIDTH);
+        ImGui::Text("Hidden Layer Activation");
+
+        ImGui::SameLine(COLUMN_1_START);
+        ImGui::SetNextItemWidth(COLUMN_WIDTH);
+        ImGui::Text("Output Layer Activation");
+
+        ImGui::NewLine();
+
+        ImGui::SameLine(COLUMN_0_START);
+        ImGui::SetNextItemWidth(COLUMN_WIDTH);
+        ImGui::Combo(
+            "##hiddenact",
+            reinterpret_cast<int*>(&val_hidden_activation),
+            ActivationFunc_str,
+            sizeof(ActivationFunc_str) / sizeof(ActivationFunc_str[0])
+        );
+
+        ImGui::SameLine(COLUMN_1_START);
+        ImGui::SetNextItemWidth(COLUMN_WIDTH);
+        ImGui::Combo(
+            "##outputact",
+            reinterpret_cast<int*>(&val_output_activation),
+            ActivationFunc_str,
+            sizeof(ActivationFunc_str) / sizeof(ActivationFunc_str[0])
+        );
+
+        ImGui::NewLine();
+        ImGui::NewLine();
+
+        //
+
+        ImGui::SameLine(COLUMN_0_START);
+        ImGui::SetNextItemWidth(COLUMN_WIDTH);
+        ImGui::Text("Batch Size");
+
+        ImGui::SameLine(COLUMN_1_START);
+        ImGui::SetNextItemWidth(COLUMN_WIDTH);
+        ImGui::Text("Seed");
+
+        ImGui::NewLine();
+
+        const uint32_t min_batch_size = 1u;
+        const uint32_t max_batch_size = 2000u;
+
+        ImGui::SameLine(COLUMN_0_START);
+        ImGui::SetNextItemWidth(COLUMN_WIDTH);
+        ImGui::DragScalar(
+            "##batchsize",
+            ImGuiDataType_U32,
+            &val_batch_size,
+            1.f,
+            &min_batch_size,
+            &max_batch_size
+        );
+
+        ImGui::SameLine(COLUMN_1_START);
+        ImGui::SetNextItemWidth(COLUMN_WIDTH);
+        ImGui::InputScalar("##seed", ImGuiDataType_U32, &val_seed);
+
+        ImGui::NewLine();
+        ImGui::NewLine();
+
+        //
+
+        ImGui::SameLine(COLUMN_0_START);
+        ImGui::SetNextItemWidth(COLUMN_WIDTH);
+        ImGui::Checkbox(
+            "Randomly Transform Training Images",
+            &val_random_transform
+        );
+
+        ImGui::Dummy({ 1.f, scaled(.16f) });
+        ImGui::NewLine();
+
+        //
+
+        ImGui::SameLine(COLUMN_0_START);
+        ImGui::Button(
+            "Train",
+            {
+                scaled(1.f - 2.f * WINDOW_PAD),
+                scaled(.1f)
+            }
+        );
     }
 
     void App::layout_training()

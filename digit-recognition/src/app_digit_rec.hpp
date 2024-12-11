@@ -32,9 +32,22 @@ namespace digit_rec
 {
 
     static constexpr auto WINDOW_TITLE = "Digit Recognition - bean-mhm";
-    static constexpr uint32_t WINDOW_SIZE = 640;
+
+    // width and height of the window
+    static constexpr uint32_t WINDOW_WIDTH = 720;
+    static constexpr uint32_t WINDOW_HEIGHT = WINDOW_WIDTH * 3u / 4u;
+
+    // the amount of horizontal and vertical padding in the window, proportional
+    // to the window width.
+    static constexpr float WINDOW_PAD = .04f;
+
+    // spacing between the 2 columns in the settings layout, proportional to the
+    // window height.
+    static constexpr float COLUMN_SPACING = .015f;
+
     static constexpr ImVec4 COLOR_BG{ .043f, .098f, .141f, 1.f };
 
+    static constexpr float FONT_SIZE = 22.f;
     static constexpr auto FONT_PATH =
         "./JetBrainsMono/JetBrainsMono-Regular.ttf";
 
@@ -65,6 +78,18 @@ namespace digit_rec
         Drawboard
     };
 
+    enum class ActivationFunc : int
+    {
+        Relu,
+        LeakyRelu,
+        Tanh
+    };
+    static constexpr const char* ActivationFunc_str[] = {
+        "ReLU",
+        "Leaky ReLU",
+        "Tanh"
+    };
+
     class App
     {
     public:
@@ -83,6 +108,14 @@ namespace digit_rec
 
         UiMode ui_mode
             = UiMode::Settings;
+
+        char val_layer_sizes[64]{};
+        float val_learning_rate = .01f;
+        ActivationFunc val_hidden_activation = ActivationFunc::LeakyRelu;
+        ActivationFunc val_output_activation = ActivationFunc::Tanh;
+        uint32_t val_batch_size = 100;
+        uint32_t val_seed = 12345678;
+        bool val_random_transform = true;
 
         std::vector<DigitSample> train_samples;
         std::vector<DigitSample> test_samples;
