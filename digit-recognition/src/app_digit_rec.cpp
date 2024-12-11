@@ -332,7 +332,7 @@ namespace digit_rec
             sprintf_s(
                 val_layer_sizes,
                 sizeof(val_layer_sizes) / sizeof(char),
-                "%zu, 16, 16, 10",
+                "%zu, 24, 16, 10",
                 N_DIGIT_VALUES
             );
         }
