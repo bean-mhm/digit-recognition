@@ -592,7 +592,7 @@ namespace digit_rec
         {
             return "Too many layers.";
         }
-        
+
         // TODO: verify input and output layer sizes
 
         // verify learning rate
