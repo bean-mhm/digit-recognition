@@ -26,6 +26,15 @@ namespace digit_rec
     {
         load_digit_samples(TRAIN_IMAGES_PATH, TRAIN_LABELS_PATH, train_samples);
         load_digit_samples(TEST_IMAGES_PATH, TEST_LABELS_PATH, test_samples);
+        if (train_samples.size() < 100u || test_samples.size() < 100u)
+        {
+            throw std::runtime_error(std::format(
+                "the number of training or test samples is extremely low "
+                "(training samples: {}, test samples: {})",
+                train_samples.size(),
+                test_samples.size()
+            ));
+        }
 
         init_ui();
     }
@@ -501,7 +510,7 @@ namespace digit_rec
         }
         else
         {
-            ImGui::Text("Accuracy: %.2f", accuracy_history.back());
+            ImGui::Text("Accuracy: %.1f%%", accuracy_history.back() * 100.f);
         }
 
         ImGui::NewLine();
@@ -514,7 +523,10 @@ namespace digit_rec
             "##accuracyplot",
             accuracy_history.data(),
             (int)accuracy_history.size(),
-            0, (const char*)0, 1.f, 1.f,
+            0,
+            (const char*)0,
+            std::numeric_limits<float>::max(),
+            std::numeric_limits<float>::max(),
             ImVec2{ CONTENT_WIDTH, scaled(.48f) }
         );
 
@@ -711,8 +723,8 @@ namespace digit_rec
         );
 
         // initialize network with random weights and biases
-        std::mt19937 rng(val_seed);
-        net->randomize_xavier_normal(rng, -.01f, .01f);
+        std::mt19937 rng_initialization(val_seed);
+        net->randomize_xavier_normal(rng_initialization, -.01f, .01f);
 
         // clear accuracy history
         accuracy_history.clear();
@@ -723,9 +735,62 @@ namespace digit_rec
             [this](std::stop_token stoken)
             {
                 recalculate_accuracy_and_add_to_history();
+
+                // number of floats in a single training example which contains
+                // input data + expected output data.
+                static constexpr size_t TRAINING_DATA_SIZE =
+                    N_DIGIT_VALUES + 10u;
+
+                std::vector<float> training_data(
+                    (size_t)val_batch_size * TRAINING_DATA_SIZE
+                );
+
+                std::vector<std::span<float>> spans(val_batch_size);
+                for (size_t i = 0; i < val_batch_size; i++)
+                {
+                    spans[i] = std::span<float>(
+                        training_data.data() + (i * TRAINING_DATA_SIZE),
+                        TRAINING_DATA_SIZE
+                    );
+                }
+
+                std::mt19937 rng(val_seed);
+                std::uniform_int_distribution<size_t> sizet_dist(
+                    0,
+                    train_samples.size() - 1u
+                );
+
                 while (!stoken.stop_requested())
                 {
-                    // TODO training step
+                    // training step
+                    for (size_t i = 0; i < val_batch_size; i++)
+                    {
+                        // pointer to input data for this training example
+                        float* input_data =
+                            training_data.data() + (i * TRAINING_DATA_SIZE);
+
+                        // pointer to expected output data for this example
+                        float* output_data =
+                            training_data.data()
+                            + (i * TRAINING_DATA_SIZE)
+                            + N_DIGIT_VALUES;
+
+                        // randomly pick a digit sample from the dataset
+                        const auto& samp = train_samples[sizet_dist(rng)];
+
+                        // update input data
+                        for (size_t i = 0; i < N_DIGIT_VALUES; i++)
+                        {
+                            input_data[i] = (float)samp.values[i] / 255.f;
+                        }
+
+                        // update expected output data
+                        for (uint32_t i = 0; i < 10; i++)
+                        {
+                            output_data[i] = (i == samp.label) ? 1.f : 0.f;
+                        }
+                    }
+                    net->train(spans, val_learning_rate);
 
                     // recalculate the accuracy if needed
                     auto elapsed_ms =
@@ -733,7 +798,7 @@ namespace digit_rec
                             std::chrono::high_resolution_clock::now()
                             - last_accuracy_calc_time
                         ).count();
-                    if (elapsed_ms > 1500)
+                    if (elapsed_ms > 1000)
                     {
                         recalculate_accuracy_and_add_to_history();
                         last_accuracy_calc_time =
