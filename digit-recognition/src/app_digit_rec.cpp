@@ -710,8 +710,38 @@ namespace digit_rec
             activation_derivs
         );
 
+        // initialize network with random weights and biases
+        std::mt19937 rng(val_seed);
+        net->randomize_xavier_normal(rng, -.01f, .01f);
+
         // clear accuracy history
         accuracy_history.clear();
+
+        // start the training thread
+        last_accuracy_calc_time = std::chrono::high_resolution_clock::now();
+        training_thread = std::make_unique<std::jthread>(
+            [this](std::stop_token stoken)
+            {
+                recalculate_accuracy_and_add_to_history();
+                while (!stoken.stop_requested())
+                {
+                    // TODO training step
+
+                    // recalculate the accuracy if needed
+                    auto elapsed_ms =
+                        std::chrono::duration_cast<std::chrono::milliseconds>(
+                            std::chrono::high_resolution_clock::now()
+                            - last_accuracy_calc_time
+                        ).count();
+                    if (elapsed_ms > 1500)
+                    {
+                        recalculate_accuracy_and_add_to_history();
+                        last_accuracy_calc_time =
+                            std::chrono::high_resolution_clock::now();
+                    }
+                }
+            }
+        );
 
         // switch UI to training mode
         ui_mode = UiMode::Training;
@@ -719,8 +749,53 @@ namespace digit_rec
 
     void App::stop_training()
     {
+        if (training_thread)
+        {
+            training_thread->request_stop();
+            training_thread->join();
+        }
+
         // switch UI to drawboard
         ui_mode = UiMode::Drawboard;
+    }
+
+    void App::recalculate_accuracy_and_add_to_history()
+    {
+        auto net_input = net->input_values();
+        auto net_output = net->output_values();
+
+        size_t total_tests = test_samples.size();
+        size_t n_correct_predict = 0;
+
+        for (const auto& samp : test_samples)
+        {
+            for (size_t i = 0; i < N_DIGIT_VALUES; i++)
+            {
+                net_input[i] = (float)samp.values[i] / 255.f;
+            }
+
+            net->forward_pass();
+
+            uint32_t predicted_label = 0;
+            float max_output = net_output[0];
+            for (uint32_t i = 1; i < 10; i++)
+            {
+                if (net_output[i] > max_output)
+                {
+                    max_output = net_output[i];
+                    predicted_label = i;
+                }
+            }
+
+            if (predicted_label == samp.label)
+            {
+                n_correct_predict++;
+            }
+        }
+
+        accuracy_history.push_back(
+            (float)n_correct_predict / (float)total_tests
+        );
     }
 
 }

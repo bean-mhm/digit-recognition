@@ -11,6 +11,9 @@
 #include <span>
 #include <memory>
 #include <functional>
+#include <thread>
+#include <chrono>
+#include <limits>
 #include <random>
 #include <stdexcept>
 #include <cmath>
@@ -126,8 +129,13 @@ namespace digit_rec
         std::vector<DigitSample> test_samples;
         std::unique_ptr<neural::Network<float, true>> net = nullptr;
 
+        std::unique_ptr<std::jthread> training_thread = nullptr;
+
         // accuracy of the network over time
         std::vector<float> accuracy_history;
+
+        // the last time we recalculated the accuracy
+        std::chrono::steady_clock::time_point last_accuracy_calc_time;
 
         void init_ui();
         void draw_ui();
@@ -146,6 +154,8 @@ namespace digit_rec
         std::optional<std::string> start_training();
 
         void stop_training();
+
+        void recalculate_accuracy_and_add_to_history();
 
     };
 
