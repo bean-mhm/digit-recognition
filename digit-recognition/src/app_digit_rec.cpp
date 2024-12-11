@@ -433,7 +433,7 @@ namespace digit_rec
             }
         ))
         {
-            ui_mode = UiMode::Training;
+            start_training();
         }
     }
 
@@ -486,7 +486,7 @@ namespace digit_rec
             }
         ))
         {
-            ui_mode = UiMode::Settings;
+            stop_training();
         }
     }
 
@@ -548,6 +548,64 @@ namespace digit_rec
             );
             out_samples[i].label = stream::read<uint8_t>(stream_labels);
         }
+    }
+
+    std::optional<std::string> App::start_training()
+    {
+        // parse and verify layer sizes
+
+        std::vector<int64_t> layer_sizes_i64;
+        for (auto& s : str::split(val_layer_sizes, ","))
+        {
+            str::trim_inplace(s);
+            try
+            {
+                layer_sizes_i64.push_back(std::stoll(s));
+            }
+            catch (const std::exception&)
+            {
+                return
+                    "Layer sizes must be a list of positive integers "
+                    "separated by commas.";
+            }
+        }
+
+        std::vector<size_t> layer_sizes;
+        for (auto layer_size_i64 : layer_sizes_i64)
+        {
+            if (layer_size_i64 < 0)
+            {
+                return "Layer sizes can't be negative.";
+            }
+            else if (layer_size_i64 < 1)
+            {
+                return "A layer must contain at least 1 node / neuron.";
+            }
+            layer_sizes.push_back((size_t)layer_size_i64);
+        }
+
+        if (layer_sizes.size() < 2u)
+        {
+            return "There should be at least 2 layers (input and output).";
+        }
+        if (layer_sizes.size() > 10u)
+        {
+            return "Too many layers.";
+        }
+        
+        // TODO: verify input and output layer sizes
+
+        // verify learning rate
+        // TODO
+
+        accuracy_history.clear();
+
+        ui_mode = UiMode::Training;
+    }
+
+    void App::stop_training()
+    {
+        ui_mode = UiMode::Drawboard;
     }
 
 }

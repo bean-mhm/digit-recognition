@@ -134,6 +134,7 @@ XCOPY "$(ProjectDir)JetBrainsMono\" "$(OutDir)JetBrainsMono\" /S /Y</Command>
     <ClInclude Include="src\lib\imgui\imstb_truetype.h" />
     <ClInclude Include="src\lib\imgui\misc\freetype\imgui_freetype.h" />
     <ClInclude Include="src\neural.hpp" />
+    <ClInclude Include="src\str.hpp" />
     <ClInclude Include="src\stream.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

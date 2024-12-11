@@ -5,9 +5,12 @@
 #include <filesystem>
 #include <string>
 #include <format>
+#include <variant>
+#include <optional>
 #include <array>
 #include <vector>
 #include <span>
+#include <memory>
 #include <functional>
 #include <random>
 #include <stdexcept>
@@ -27,6 +30,7 @@
 #include "neural.hpp"
 #include "endian.hpp"
 #include "stream.hpp"
+#include "str.hpp"
 
 namespace digit_rec
 {
@@ -106,7 +110,7 @@ namespace digit_rec
         ImGuiIO* io = nullptr;
         ImFont* font = nullptr;
 
-        UiMode ui_mode = UiMode::Training;
+        UiMode ui_mode = UiMode::Settings;
 
         char val_layer_sizes[64]{};
         float val_learning_rate = .01f;
@@ -118,6 +122,7 @@ namespace digit_rec
 
         std::vector<DigitSample> train_samples;
         std::vector<DigitSample> test_samples;
+        std::unique_ptr<neural::Network<float, true>> net = nullptr;
 
         // accuracy of the network over time
         std::vector<float> accuracy_history;
@@ -134,6 +139,11 @@ namespace digit_rec
             std::string_view labels_path,
             std::vector<DigitSample>& out_samples
         );
+
+        // returns std::nullopt on success, and an error message on failure.
+        std::optional<std::string> start_training();
+
+        void stop_training();
 
     };
 
