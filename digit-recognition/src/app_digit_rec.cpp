@@ -656,6 +656,7 @@ namespace digit_rec
         {
             return "Too many layers.";
         }
+
         if (layer_sizes[0] != N_DIGIT_VALUES)
         {
             return std::format(
@@ -666,6 +667,14 @@ namespace digit_rec
         if (layer_sizes.back() != 10)
         {
             return "The size of the last layer (output) must always be 10.";
+        }
+
+        for (size_t i = 1; i < layer_sizes.size() - 1u; i++)
+        {
+            if (layer_sizes[i] > 64)
+            {
+                return "The maximum size for a hidden layer is 64.";
+            }
         }
 
         // activation functions and their derivatives
