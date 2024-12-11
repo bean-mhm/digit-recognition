@@ -94,7 +94,7 @@ namespace digit_rec
         style.Colors[ImGuiCol_TextDisabled] = ImVec4(0.2745098173618317f, 0.3176470696926117f, 0.4509803950786591f, 1.0f);
         style.Colors[ImGuiCol_WindowBg] = ImVec4(0.04313725605607033f, 0.09803921729326248f, 0.1411764770746231f, 1.0f);
         style.Colors[ImGuiCol_ChildBg] = ImVec4(0.05387832224369049f, 0.1191623359918594f, 0.1673820018768311f, 1.0f);
-        style.Colors[ImGuiCol_PopupBg] = ImVec4(0.04313725605607033f, 0.09803921729326248f, 0.1411764770746231f, 1.0f);
+        style.Colors[ImGuiCol_PopupBg] = ImVec4(0.03921568766236305f, 0.07112683355808258f, 0.08627451211214066f, 1.0f);
         style.Colors[ImGuiCol_Border] = ImVec4(1.0f, 1.0f, 1.0f, 0.0313725508749485f);
         style.Colors[ImGuiCol_BorderShadow] = ImVec4(0.0784313753247261f, 0.08627451211214066f, 0.1019607856869698f, 0.0f);
         style.Colors[ImGuiCol_FrameBg] = ImVec4(0.1013096645474434f, 0.1450867503881454f, 0.1888412237167358f, 1.0f);
@@ -207,7 +207,8 @@ namespace digit_rec
 
         // load fonts
         font = io->Fonts->AddFontFromFileTTF(FONT_PATH, FONT_SIZE);
-        if (!font)
+        font_bold = io->Fonts->AddFontFromFileTTF(FONT_BOLD_PATH, FONT_SIZE);
+        if (!font || !font_bold)
         {
             throw std::runtime_error("failed to load fonts");
         }
@@ -265,6 +266,8 @@ namespace digit_rec
                 | ImGuiWindowFlags_NoSavedSettings
             );
 
+            ImGui::PushFont(font);
+
             switch (ui_mode)
             {
             case digit_rec::UiMode::Settings:
@@ -279,6 +282,8 @@ namespace digit_rec
             default:
                 break;
             }
+
+            ImGui::PopFont();
 
             ImGui::End();
         }
@@ -512,6 +517,7 @@ namespace digit_rec
         {
             ImGui::Text("Accuracy: %.1f%%", accuracy_history.back() * 100.f);
         }
+        network_summary_tooltip();
 
         ImGui::NewLine();
 
@@ -726,8 +732,9 @@ namespace digit_rec
         std::mt19937 rng_initialization(val_seed);
         net->randomize_xavier_normal(rng_initialization, -.01f, .01f);
 
-        // clear accuracy history
+        // reset accuracy history and the number of training steps
         accuracy_history.clear();
+        n_training_steps = 0;
 
         // start the training thread
         last_accuracy_calc_time = std::chrono::high_resolution_clock::now();
@@ -791,6 +798,7 @@ namespace digit_rec
                         }
                     }
                     net->train(spans, val_learning_rate);
+                    n_training_steps++;
 
                     // recalculate the accuracy if needed
                     auto elapsed_ms =
@@ -861,6 +869,84 @@ namespace digit_rec
         accuracy_history.push_back(
             (float)n_correct_predict / (float)total_tests
         );
+    }
+
+    void App::bold_text(const char* s, va_list args)
+    {
+        ImGui::PushFont(font_bold);
+        ImGui::Text(s, args);
+        ImGui::PopFont();
+    }
+
+    void App::network_summary_tooltip()
+    {
+        if (!net || !ImGui::IsItemHovered())
+            return;
+
+        if (!ImGui::BeginTooltip())
+            return;
+
+        std::string s_layer_sizes;
+        for (size_t i = 0; i < net->layer_sizes().size(); i++)
+        {
+            if (i != 0)
+                s_layer_sizes += ", ";
+            s_layer_sizes += std::to_string(net->layer_sizes()[i]);
+        }
+        bold_text("Layer Sizes:");
+        ImGui::SameLine();
+        ImGui::Text(s_layer_sizes.c_str());
+
+        bold_text("Learning Rate:");
+        ImGui::SameLine();
+        ImGui::Text("%.6f", val_learning_rate);
+
+        bold_text("Hidden Layer Activation:");
+        ImGui::SameLine();
+        ImGui::Text(ActivationFunc_str[(size_t)val_hidden_activation]);
+
+        bold_text("Output Layer Activation:");
+        ImGui::SameLine();
+        ImGui::Text(ActivationFunc_str[(size_t)val_output_activation]);
+
+        bold_text("Batch Size:");
+        ImGui::SameLine();
+        ImGui::Text("%u", val_batch_size);
+
+        bold_text("Seed:");
+        ImGui::SameLine();
+        ImGui::Text("%u", val_seed);
+
+        bold_text("Randomly Transform Images:");
+        ImGui::SameLine();
+        ImGui::Text("%s", val_random_transform ? "Yes" : "No");
+
+        ImGui::NewLine();
+        bold_text("Training Steps:");
+        ImGui::SameLine();
+        ImGui::Text("%llu", n_training_steps.load());
+
+        ImGui::EndTooltip();
+
+        /*return std::format(
+            "Layer Sizes: {}\n"
+            "Learning Rate: {}\n"
+            "Hidden Layer Activation: {}\n"
+            "Output Layer Activation: {}\n"
+            "Batch Size: {}\n"
+            "Seed: {}\n"
+            "Randomly Transform Images: {}\n"
+            "Training Steps: {}",
+
+            s_layer_sizes,
+            val_learning_rate,
+            ActivationFunc_str[(size_t)val_hidden_activation],
+            ActivationFunc_str[(size_t)val_output_activation],
+            val_batch_size,
+            val_seed,
+            val_random_transform,
+            n_training_steps.load()
+        );*/
     }
 
 }

@@ -12,6 +12,7 @@
 #include <memory>
 #include <functional>
 #include <thread>
+#include <atomic>
 #include <chrono>
 #include <limits>
 #include <random>
@@ -59,6 +60,8 @@ namespace digit_rec
     static constexpr float FONT_SIZE = 21.f;
     static constexpr auto FONT_PATH =
         "./JetBrainsMono/JetBrainsMono-Regular.ttf";
+    static constexpr auto FONT_BOLD_PATH =
+        "./JetBrainsMono/JetBrainsMono-Bold.ttf";
 
     static constexpr auto TRAIN_IMAGES_PATH =
         "./MNIST/train-images.idx3-ubyte";
@@ -114,6 +117,7 @@ namespace digit_rec
         GLFWwindow* window = nullptr;
         ImGuiIO* io = nullptr;
         ImFont* font = nullptr;
+        ImFont* font_bold = nullptr;
 
         UiMode ui_mode = UiMode::Settings;
 
@@ -130,6 +134,7 @@ namespace digit_rec
         std::unique_ptr<neural::Network<float, true>> net = nullptr;
 
         std::unique_ptr<std::jthread> training_thread = nullptr;
+        std::atomic_uint64_t n_training_steps = 0;
 
         // accuracy of the network over time
         std::vector<float> accuracy_history;
@@ -156,6 +161,12 @@ namespace digit_rec
         void stop_training();
 
         void recalculate_accuracy_and_add_to_history();
+
+        // display a tooltip on the current UI item containing information about
+        // the neural network.
+        void network_summary_tooltip();
+
+        void bold_text(const char* s, va_list args = nullptr);
 
     };
 
