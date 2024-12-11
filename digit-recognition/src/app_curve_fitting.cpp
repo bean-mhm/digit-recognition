@@ -48,17 +48,14 @@ namespace curve_fitting
         net.randomize_xavier_normal(rng, -.01f, .01f);
 
         // train
-        static constexpr size_t N_EPOCHS = 1000u;
+        static constexpr size_t N_EPOCHS = 100000u;
         for (size_t i = 0u; i < N_EPOCHS; i++)
         {
             std::vector<float> data;
             std::vector<std::span<float>> spans;
             generate_random_training_data(rng, 100u, data, spans);
 
-            for (size_t i = 0u; i < 100u; i++)
-            {
-                net.train(spans, .01f);
-            }
+            net.train(spans, .01f);
 
             std::cout << std::format("training epoch {} of {}\n", i, N_EPOCHS);
         }
