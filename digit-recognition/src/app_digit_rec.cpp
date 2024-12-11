@@ -72,8 +72,8 @@ namespace digit_rec
         style.ColumnsMinSpacing = 6.0f;
         style.ScrollbarSize = 12.0f;
         style.ScrollbarRounding = 20.0f;
-        style.GrabMinSize = 20.0f;
-        style.GrabRounding = 50.0f;
+        style.GrabMinSize = 26.0f;
+        style.GrabRounding = 20.0f;
         style.TabRounding = 4.0f;
         style.TabBorderSize = 1.0f;
         style.TabMinWidthForCloseButton = 0.0f;
@@ -301,7 +301,13 @@ namespace digit_rec
 
         ImGui::SameLine(COLUMN_1_START);
         ImGui::SetNextItemWidth(COLUMN_WIDTH);
-        ImGui::Text("Learning Rate");
+        size_t n_decimal = 4;
+        if (val_learning_rate < .001f) n_decimal = 5;
+        if (val_learning_rate < .0001f) n_decimal = 6;
+        ImGui::Text(
+            std::format("Learning Rate: %.{}f", n_decimal).c_str(),
+            val_learning_rate
+        );
 
         ImGui::NewLine();
 
@@ -322,15 +328,18 @@ namespace digit_rec
 
         ImGui::SameLine(COLUMN_1_START);
         ImGui::SetNextItemWidth(COLUMN_WIDTH);
+        static float learning_rate_root4 = std::pow(val_learning_rate, .25f);
         ImGui::SliderFloat(
             "##learnrate",
-            &val_learning_rate,
+            &learning_rate_root4,
             0.f,
             1.f,
-            "%.4f",
+            "##",
             ImGuiSliderFlags_AlwaysClamp
-            | ImGuiSliderFlags_Logarithmic
+            | ImGuiSliderFlags_NoRoundToFormat
+            | ImGuiSliderFlags_NoInput
         );
+        val_learning_rate = std::pow(learning_rate_root4, 4.f);
 
         ImGui::NewLine();
         ImGui::NewLine();

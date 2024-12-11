@@ -47,7 +47,7 @@ namespace digit_rec
 
     static constexpr ImVec4 COLOR_BG{ .043f, .098f, .141f, 1.f };
 
-    static constexpr float FONT_SIZE = 22.f;
+    static constexpr float FONT_SIZE = 21.f;
     static constexpr auto FONT_PATH =
         "./JetBrainsMono/JetBrainsMono-Regular.ttf";
 
