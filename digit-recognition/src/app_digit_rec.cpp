@@ -40,14 +40,16 @@ namespace digit_rec
         // this is only for testing;
         if (0)
         {
+            const auto& samp = train_samples[1004];
+
             std::ofstream f("./digit.ppm", std::ios::out | std::ios::trunc);
             if (!f.is_open())
             {
                 throw std::runtime_error("failed to write test PPM image file");
             }
-            f << "P3 " << DIGIT_WIDTH << " " << DIGIT_HEIGHT << " 255\n";
 
-            const auto& samp = train_samples[1004];
+            f << "P3\n# label: " << samp.label << '\n';
+            f << DIGIT_WIDTH << " " << DIGIT_HEIGHT << " 255\n";
             for (auto v : samp.values)
             {
                 f << std::format("{0} {0} {0}\n", v);
@@ -632,6 +634,12 @@ namespace digit_rec
         }
     }
 
+    // linear interpolation
+    static float mix(float a, float b, float t)
+    {
+        return a + t * (b - a);
+    }
+
     // read digit sample data from src_digit and render a randomly transformed
     // version of it into dst_digit. both arrays are expected to contain at
     // least N_DIGIT_VALUES values.
@@ -639,63 +647,132 @@ namespace digit_rec
     void apply_random_transform(
         RandomEngine& engine,
         float* src_digit,
-        float* dst_digit
+        float* dst_digit,
+
+        // defines whether src_digit and dst_digit contain the exact same data,
+        // so that we can optimize out some copies if needed.
+        bool src_dst_are_equal
     )
     {
         std::uniform_real_distribution<float> dist(0.f, 1.f);
 
-        static constexpr float HALF_DIGIT_WIDTH = .5f * (float)DIGIT_WIDTH;
-        static constexpr float HALF_DIGIT_HEIGHT = .5f * (float)DIGIT_HEIGHT;
-
-        static constexpr float DIGIT_MAX_DIM =
-            (float)std::max(DIGIT_WIDTH, DIGIT_HEIGHT);
-        static constexpr float DIGIT_MAX_DIM_INV = 1.f / DIGIT_MAX_DIM;
-
-        static constexpr float DEG2RAD = .0174532925199f;
-
-        const float scale = .9f + .2f * dist(engine);
-        const float inv_scale = 1.f / scale;
-
-        const float rotation = (-4.f + 8.f * dist(engine)) * DEG2RAD;
-        const float sin_a = std::sin(rotation);
-        const float cos_a = std::cos(rotation);
-
-        const float offset_x = -.1f + .2f * dist(engine);
-        const float offset_y = -.1f + .2f * dist(engine);
-
-        for (int32_t y = 0; y < DIGIT_HEIGHT; y++)
+        // only transform half of the images, because bilinear interpolation
+        // blurs everything out and we'd like to still have some sharp samples.
+        if (dist(engine) < .5f)
         {
-            for (int32_t x = 0; x < DIGIT_WIDTH; x++)
+            static constexpr float HALF_WIDTH = .5f * (float)DIGIT_WIDTH;
+            static constexpr float HALF_HEIGHT = .5f * (float)DIGIT_HEIGHT;
+
+            static constexpr float MAX_DIM =
+                (float)std::max(DIGIT_WIDTH, DIGIT_HEIGHT);
+            static constexpr float MAX_DIM_INV = 1.f / MAX_DIM;
+
+            static constexpr float DEG2RAD = .0174532925199f;
+
+            const float scale = .9f + .2f * dist(engine);
+            const float inv_scale = 1.f / scale;
+
+            const float rotation = (-4.f + 8.f * dist(engine)) * DEG2RAD;
+            const float sin_a = std::sin(rotation);
+            const float cos_a = std::cos(rotation);
+
+            const float offset_x = -.1f + .2f * dist(engine);
+            const float offset_y = -.1f + .2f * dist(engine);
+
+            for (int32_t y = 0; y < DIGIT_HEIGHT; y++)
             {
-                // UV coordinates from -1 to +1, (0, 0) is center.
-                float u = (float)x + .5f - HALF_DIGIT_WIDTH;
-                float v = (float)y + .5f - HALF_DIGIT_HEIGHT;
-                u *= DIGIT_MAX_DIM_INV * 2.f;
-                v *= DIGIT_MAX_DIM_INV * 2.f;
+                for (int32_t x = 0; x < DIGIT_WIDTH; x++)
+                {
+                    // UV coordinates from -1 to +1, (0, 0) is center.
+                    float u = (float)x + .5f - HALF_WIDTH;
+                    float v = (float)y + .5f - HALF_HEIGHT;
+                    u *= MAX_DIM_INV * 2.f;
+                    v *= MAX_DIM_INV * 2.f;
 
-                // offset (third transformation)
-                u -= offset_x;
-                v -= offset_y;
+                    // offset (third transformation)
+                    u -= offset_x;
+                    v -= offset_y;
 
-                // rotate (second transformation)
-                float u2 = (u * cos_a) + (v * sin_a);
-                float v2 = (v * cos_a) - (u * sin_a);
+                    // rotate (second transformation)
+                    float u2 = (u * cos_a) + (v * sin_a);
+                    float v2 = (v * cos_a) - (u * sin_a);
 
-                // scale (first transformation)
-                u2 *= inv_scale;
-                v2 *= inv_scale;
+                    // scale (first transformation)
+                    u2 *= inv_scale;
+                    v2 *= inv_scale;
 
-                // (find an intuition for why the order is reversed)
+                    // (find an intuition for why the order is reversed)
 
-                // calculatae the final coordinates we need to sample
-                float coord_x = u2 * .5f * DIGIT_MAX_DIM + HALF_DIGIT_WIDTH;
-                float coord_y = v2 * .5f * DIGIT_MAX_DIM + HALF_DIGIT_HEIGHT;
+                    // calculatae the final coordinates we need to sample
+                    float coord_x = u2 * .5f * MAX_DIM + HALF_WIDTH;
+                    float coord_y = v2 * .5f * MAX_DIM + HALF_HEIGHT;
 
-                // sample from src_digit with bilinear interpolation
-                int32_t icoord_bl_x = (int32_t)std::floor(coord_x - .4999f);
-                int32_t icoord_bl_y = (int32_t)std::floor(coord_y - .4999f);
-                // TODO
+                    // sample from src_digit with bilinear interpolation
+
+                    int32_t icoord_tl_x = (int32_t)std::floor(coord_x - .5f);
+                    int32_t icoord_tl_y = (int32_t)std::floor(coord_y - .5f);
+
+                    int32_t icoord_tr_x = icoord_tl_x + 1;
+                    int32_t icoord_tr_y = icoord_tl_y;
+
+                    int32_t icoord_bl_x = icoord_tl_x;
+                    int32_t icoord_bl_y = icoord_tl_y + 1;
+
+                    int32_t icoord_br_x = icoord_tr_x;
+                    int32_t icoord_br_y = icoord_bl_y;
+
+                    float tl = 0.f, tr = 0.f, bl = 0.f, br = 0.f;
+                    if (icoord_tl_x >= 0 && icoord_tl_x < DIGIT_WIDTH
+                        && icoord_tl_y >= 0 && icoord_tl_y < DIGIT_HEIGHT)
+                    {
+                        tl = src_digit[icoord_tl_y * DIGIT_WIDTH + icoord_tl_x];
+                    }
+                    if (icoord_tr_x >= 0 && icoord_tr_x < DIGIT_WIDTH
+                        && icoord_tr_y >= 0 && icoord_tr_y < DIGIT_HEIGHT)
+                    {
+                        tr = src_digit[icoord_tr_y * DIGIT_WIDTH + icoord_tr_x];
+                    }
+                    if (icoord_bl_x >= 0 && icoord_bl_x < DIGIT_WIDTH
+                        && icoord_bl_y >= 0 && icoord_bl_y < DIGIT_HEIGHT)
+                    {
+                        bl = src_digit[icoord_bl_y * DIGIT_WIDTH + icoord_bl_x];
+                    }
+                    if (icoord_br_x >= 0 && icoord_br_x < DIGIT_WIDTH
+                        && icoord_br_y >= 0 && icoord_br_y < DIGIT_HEIGHT)
+                    {
+                        br = src_digit[icoord_br_y * DIGIT_WIDTH + icoord_br_x];
+                    }
+
+                    float horiz_mix = coord_x - ((float)icoord_tl_x + .5f);
+                    dst_digit[y * DIGIT_WIDTH + x] = mix(
+                        mix(tl, tr, horiz_mix),
+                        mix(bl, br, horiz_mix),
+                        coord_y - ((float)icoord_tl_y + .5f)
+                    );
+                }
             }
+        }
+        else if (!src_dst_are_equal)
+        {
+            std::copy(
+                src_digit,
+                src_digit + N_DIGIT_VALUES,
+                dst_digit
+            );
+        }
+
+        // randomly add noise to some of the pixels
+        std::uniform_int_distribution<size_t> idx_dist(0, N_DIGIT_VALUES - 1u);
+        for (size_t i = 0; i < 5; i++)
+        {
+            size_t idx = idx_dist(engine);
+            float noise = -.5f + dist(engine);
+
+            dst_digit[idx] = std::clamp(
+                dst_digit[idx] + noise,
+                0.f,
+                1.f
+            );
         }
     }
 
@@ -901,7 +978,8 @@ namespace digit_rec
                             apply_random_transform(
                                 rng_random_transforms,
                                 digit_data_copy,
-                                input_data
+                                input_data,
+                                true
                             );
                         }
 
@@ -920,7 +998,7 @@ namespace digit_rec
                             std::chrono::high_resolution_clock::now()
                             - last_accuracy_calc_time
                         ).count();
-                    if (elapsed_ms > 500)
+                    if (elapsed_ms > 1000)
                     {
                         recalculate_accuracy_and_add_to_history();
                         last_accuracy_calc_time =
@@ -954,22 +1032,44 @@ namespace digit_rec
         static constexpr size_t n_tests = 2000;
         size_t n_correct_predict = 0;
 
-        std::mt19937 rng(val_seed);
+        std::mt19937 rng_pick_sample(val_seed);
         std::uniform_int_distribution<size_t> sizet_dist(
             0,
             test_samples.size() - 1u
         );
 
+        std::mt19937 rng_random_transforms(val_seed);
+
         for (size_t i = 0; i < n_tests; i++)
         {
             // pick a random sample from the test dataset
-            const auto& samp = test_samples[sizet_dist(rng)];
+            const auto& samp = test_samples[sizet_dist(rng_pick_sample)];
 
             // feed it to the network
             for (size_t i = 0; i < N_DIGIT_VALUES; i++)
             {
                 net_input[i] = (float)samp.values[i] / 255.f;
             }
+
+            // randomly transform the input data if needed
+            if (val_random_transform)
+            {
+                float digit_data_copy[N_DIGIT_VALUES];
+                std::copy(
+                    net_input.data(),
+                    net_input.data() + N_DIGIT_VALUES,
+                    digit_data_copy
+                );
+
+                apply_random_transform(
+                    rng_random_transforms,
+                    digit_data_copy,
+                    net_input.data(),
+                    true
+                );
+            }
+
+            // perform a forward pass
             net->forward_pass();
 
             // see what the network predicted
