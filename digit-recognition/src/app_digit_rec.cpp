@@ -728,7 +728,7 @@ namespace digit_rec
                 ImGui::ProgressBar(
                     std::clamp(net_output[i], 0.f, 1.f),
                     {
-                        .7f * ImGui::GetWindowWidth(),
+                        .65f * ImGui::GetWindowWidth(),
                         ImGui::GetItemRectSize().y
                     },
                     "##"
