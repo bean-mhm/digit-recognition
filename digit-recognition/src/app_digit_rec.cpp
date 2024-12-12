@@ -626,6 +626,13 @@ namespace digit_rec
     {
         std::uniform_real_distribution<float> dist(0.f, 1.f);
 
+        static constexpr float HALF_DIGIT_WIDTH = .5f * (float)DIGIT_WIDTH;
+        static constexpr float HALF_DIGIT_HEIGHT = .5f * (float)DIGIT_HEIGHT;
+
+        static constexpr float DIGIT_MAX_DIM =
+            (float)std::max(DIGIT_WIDTH, DIGIT_HEIGHT);
+        static constexpr float DIGIT_MAX_DIM_INV = 1.f / DIGIT_MAX_DIM;
+
         static constexpr float DEG2RAD = .0174532925199f;
 
         const float scale = .9f + .2f * dist(engine);
@@ -637,11 +644,6 @@ namespace digit_rec
 
         const float offset_x = -.1f + .2f * dist(engine);
         const float offset_y = -.1f + .2f * dist(engine);
-
-        static constexpr float HALF_DIGIT_WIDTH = .5f * (float)DIGIT_WIDTH;
-        static constexpr float HALF_DIGIT_HEIGHT = .5f * (float)DIGIT_HEIGHT;
-        static constexpr float DIGIT_MAX_DIM_INV =
-            1.f / (float)std::max(DIGIT_WIDTH, DIGIT_HEIGHT);
 
         for (int32_t y = 0; y < DIGIT_HEIGHT; y++)
         {
@@ -667,7 +669,11 @@ namespace digit_rec
 
                 // (find an intuition for why the order is reversed)
 
-                // sample from src_digit with bilinear interpolation.
+                // calculatae the final coordinates we need to sample
+                float coord_x = u2 * .5f * DIGIT_MAX_DIM + HALF_DIGIT_WIDTH;
+                float coord_y = v2 * .5f * DIGIT_MAX_DIM + HALF_DIGIT_HEIGHT;
+
+                // sample from src_digit with bilinear interpolation
                 TODO;
             }
         }
