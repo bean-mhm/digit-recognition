@@ -183,7 +183,7 @@ namespace digit_rec
         float drawboard_last_cursor_y = 0.f;
 
         static constexpr auto DEFAULT_NETWORK_GUESS_TEXT =
-            "Draw some digits! Right click to clear.";
+            "Draw some digits!  (Right click to clear)";
         std::string network_guess_text = DEFAULT_NETWORK_GUESS_TEXT;
 
         void reset_drawboard();

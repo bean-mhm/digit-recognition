@@ -758,13 +758,25 @@ namespace digit_rec
             if (ImGui::Button(
                 "Reset",
                 {
-                    content_width,
+                    .5f * content_width - scaled(COLUMN_SPACING),
                     scaled(.1f)
                 }
             ))
             {
                 net = nullptr;
                 ui_mode = UiMode::Settings;
+            }
+
+            ImGui::SameLine(0.f, 2.f * scaled(COLUMN_SPACING));
+            if (ImGui::Button(
+                "Train More",
+                {
+                    .5f * content_width - scaled(COLUMN_SPACING),
+                    scaled(.1f)
+                }
+            ))
+            {
+                //
             }
         }
         ImGui::EndChild();
