@@ -234,9 +234,9 @@ namespace digit_rec
         }
     }
 
-    static constexpr float scaled(float size)
+    float App::scaled(float size) const
     {
-        return size * (float)WINDOW_WIDTH;
+        return size * imgui_window_width;
     }
 
     void App::draw_ui()
@@ -286,6 +286,8 @@ namespace digit_rec
                 | ImGuiWindowFlags_NoSavedSettings
             );
 
+            imgui_window_width = ImGui::GetWindowWidth();
+
             ImGui::PushFont(font);
 
             switch (ui_mode)
@@ -323,18 +325,18 @@ namespace digit_rec
 
     void App::layout_settings()
     {
-        static constexpr float COLUMN_WIDTH = scaled(
+        const float column_width = scaled(
             .5f - COLUMN_SPACING - WINDOW_PAD
         );
-        static constexpr float COLUMN_0_START = scaled(WINDOW_PAD);
-        static constexpr float COLUMN_1_START = scaled(.5f + COLUMN_SPACING);
+        const float column_0_start = scaled(WINDOW_PAD);
+        const float column_1_start = scaled(.5f + COLUMN_SPACING);
 
-        ImGui::SameLine(COLUMN_0_START);
-        ImGui::SetNextItemWidth(COLUMN_WIDTH);
+        ImGui::SameLine(column_0_start);
+        ImGui::SetNextItemWidth(column_width);
         ImGui::Text("Layer Sizes");
 
-        ImGui::SameLine(COLUMN_1_START);
-        ImGui::SetNextItemWidth(COLUMN_WIDTH);
+        ImGui::SameLine(column_1_start);
+        ImGui::SetNextItemWidth(column_width);
         size_t n_decimal = 4;
         if (val_learning_rate < .001f) n_decimal = 5;
         if (val_learning_rate < .0001f) n_decimal = 6;
@@ -356,12 +358,12 @@ namespace digit_rec
                 N_DIGIT_VALUES
             );
         }
-        ImGui::SameLine(COLUMN_0_START);
-        ImGui::SetNextItemWidth(COLUMN_WIDTH);
+        ImGui::SameLine(column_0_start);
+        ImGui::SetNextItemWidth(column_width);
         ImGui::InputText("##layersizes", val_layer_sizes, 64);
 
-        ImGui::SameLine(COLUMN_1_START);
-        ImGui::SetNextItemWidth(COLUMN_WIDTH);
+        ImGui::SameLine(column_1_start);
+        ImGui::SetNextItemWidth(column_width);
         static float learning_rate_root4 = std::pow(val_learning_rate, .25f);
         ImGui::SliderFloat(
             "##learnrate",
@@ -380,18 +382,18 @@ namespace digit_rec
 
         //
 
-        ImGui::SameLine(COLUMN_0_START);
-        ImGui::SetNextItemWidth(COLUMN_WIDTH);
+        ImGui::SameLine(column_0_start);
+        ImGui::SetNextItemWidth(column_width);
         ImGui::Text("Hidden Layer Activation");
 
-        ImGui::SameLine(COLUMN_1_START);
-        ImGui::SetNextItemWidth(COLUMN_WIDTH);
+        ImGui::SameLine(column_1_start);
+        ImGui::SetNextItemWidth(column_width);
         ImGui::Text("Output Layer Activation");
 
         ImGui::NewLine();
 
-        ImGui::SameLine(COLUMN_0_START);
-        ImGui::SetNextItemWidth(COLUMN_WIDTH);
+        ImGui::SameLine(column_0_start);
+        ImGui::SetNextItemWidth(column_width);
         ImGui::Combo(
             "##hiddenact",
             reinterpret_cast<int*>(&val_hidden_activation),
@@ -399,8 +401,8 @@ namespace digit_rec
             sizeof(ActivationFunc_str) / sizeof(ActivationFunc_str[0])
         );
 
-        ImGui::SameLine(COLUMN_1_START);
-        ImGui::SetNextItemWidth(COLUMN_WIDTH);
+        ImGui::SameLine(column_1_start);
+        ImGui::SetNextItemWidth(column_width);
         ImGui::Combo(
             "##outputact",
             reinterpret_cast<int*>(&val_output_activation),
@@ -413,12 +415,12 @@ namespace digit_rec
 
         //
 
-        ImGui::SameLine(COLUMN_0_START);
-        ImGui::SetNextItemWidth(COLUMN_WIDTH);
+        ImGui::SameLine(column_0_start);
+        ImGui::SetNextItemWidth(column_width);
         ImGui::Text("Batch Size");
 
-        ImGui::SameLine(COLUMN_1_START);
-        ImGui::SetNextItemWidth(COLUMN_WIDTH);
+        ImGui::SameLine(column_1_start);
+        ImGui::SetNextItemWidth(column_width);
         ImGui::Text("Seed");
 
         ImGui::NewLine();
@@ -426,8 +428,8 @@ namespace digit_rec
         const uint32_t min_batch_size = 1u;
         const uint32_t max_batch_size = 2000u;
 
-        ImGui::SameLine(COLUMN_0_START);
-        ImGui::SetNextItemWidth(COLUMN_WIDTH);
+        ImGui::SameLine(column_0_start);
+        ImGui::SetNextItemWidth(column_width);
         ImGui::DragScalar(
             "##batchsize",
             ImGuiDataType_U32,
@@ -439,8 +441,8 @@ namespace digit_rec
             ImGuiSliderFlags_AlwaysClamp
         );
 
-        ImGui::SameLine(COLUMN_1_START);
-        ImGui::SetNextItemWidth(COLUMN_WIDTH);
+        ImGui::SameLine(column_1_start);
+        ImGui::SetNextItemWidth(column_width);
         ImGui::InputScalar("##seed", ImGuiDataType_U32, &val_seed);
 
         ImGui::NewLine();
@@ -448,8 +450,8 @@ namespace digit_rec
 
         //
 
-        ImGui::SameLine(COLUMN_0_START);
-        ImGui::SetNextItemWidth(COLUMN_WIDTH);
+        ImGui::SameLine(column_0_start);
+        ImGui::SetNextItemWidth(column_width);
         ImGui::Checkbox(
             "Randomly Transform Training Images",
             &val_random_transform
@@ -459,20 +461,20 @@ namespace digit_rec
 
         static std::string error_text = "";
 
-        static constexpr float FOOTER_HEIGHT = scaled(.1f);
+        const float footer_height = scaled(.1f);
         ImGui::SetNextWindowPos(
-            { 0.f, ImGui::GetWindowHeight() - FOOTER_HEIGHT }
+            { 0.f, ImGui::GetWindowHeight() - footer_height }
         );
         ImGui::BeginChild(
             "##footer_settings",
-            { ImGui::GetWindowWidth(), FOOTER_HEIGHT },
+            { ImGui::GetWindowWidth(), footer_height },
             0,
             ImGuiWindowFlags_NoBackground
             | ImGuiWindowFlags_NoCollapse
             | ImGuiWindowFlags_NoSavedSettings
         );
         {
-            ImGui::SameLine(COLUMN_0_START);
+            ImGui::SameLine(column_0_start);
             if (ImGui::Button(
                 "Train",
                 {
@@ -531,16 +533,16 @@ namespace digit_rec
 
     void App::layout_training()
     {
-        static constexpr float PADDED_WIDTH = scaled(
+        const float padded_width = scaled(
             .5f - COLUMN_SPACING - WINDOW_PAD
         );
-        static constexpr float CONTENT_START = scaled(WINDOW_PAD);
-        static constexpr float CONTENT_WIDTH = scaled(
+        const float content_start = scaled(WINDOW_PAD);
+        const float content_width = scaled(
             1.f - 2.f * WINDOW_PAD
         );
 
-        ImGui::SameLine(CONTENT_START);
-        ImGui::SetNextItemWidth(CONTENT_WIDTH);
+        ImGui::SameLine(content_start);
+        ImGui::SetNextItemWidth(content_width);
         if (accuracy_history.empty())
         {
             ImGui::Text("Accuracy");
@@ -555,8 +557,8 @@ namespace digit_rec
 
         //
 
-        ImGui::SameLine(CONTENT_START);
-        ImGui::SetNextItemWidth(CONTENT_WIDTH);
+        ImGui::SameLine(content_start);
+        ImGui::SetNextItemWidth(content_width);
         ImGui::PlotLines(
             "##accuracyplot",
             accuracy_history.data(),
@@ -565,29 +567,29 @@ namespace digit_rec
             (const char*)0,
             std::numeric_limits<float>::max(),
             std::numeric_limits<float>::max(),
-            ImVec2{ CONTENT_WIDTH, scaled(.485f) }
+            ImVec2{ content_width, scaled(.485f) }
         );
 
         //
 
-        static constexpr float FOOTER_HEIGHT = scaled(.1f);
+        const float footer_height = scaled(.1f);
         ImGui::SetNextWindowPos(
-            { 0.f, ImGui::GetWindowHeight() - FOOTER_HEIGHT }
+            { 0.f, ImGui::GetWindowHeight() - footer_height }
         );
         ImGui::BeginChild(
             "##footer_training",
-            { ImGui::GetWindowWidth(), FOOTER_HEIGHT },
+            { ImGui::GetWindowWidth(), footer_height },
             0,
             ImGuiWindowFlags_NoBackground
             | ImGuiWindowFlags_NoCollapse
             | ImGuiWindowFlags_NoSavedSettings
         );
         {
-            ImGui::SameLine(CONTENT_START);
+            ImGui::SameLine(content_start);
             if (ImGui::Button(
                 "Stop",
                 {
-                    CONTENT_WIDTH,
+                    content_width,
                     scaled(.1f)
                 }
             ))
