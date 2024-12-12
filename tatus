@@ -1,0 +1,115 @@
+[1mdiff --git a/digit-recognition/src/app_digit_rec.cpp b/digit-recognition/src/app_digit_rec.cpp[m
+[1mindex 47d5bc7..d9f9521 100644[m
+[1m--- a/digit-recognition/src/app_digit_rec.cpp[m
+[1m+++ b/digit-recognition/src/app_digit_rec.cpp[m
+[36m@@ -57,6 +57,10 @@[m [mnamespace digit_rec[m
+         }[m
+ [m
+         init_ui();[m
+[32m+[m
+[32m+[m[32m        clear_drawboard();[m
+[32m+[m[32m        init_drawboard_texture();[m
+[32m+[m[32m        update_drawboard_texture();[m
+     }[m
+ [m
+     void App::loop()[m
+[36m@@ -239,6 +243,55 @@[m [mnamespace digit_rec[m
+         return size * imgui_window_width;[m
+     }[m
+ [m
+[32m+[m[32m    void App::clear_drawboard()[m
+[32m+[m[32m    {[m
+[32m+[m[32m        for (auto& v : drawboard_image)[m
+[32m+[m[32m        {[m
+[32m+[m[32m            v = 0.f;[m
+[32m+[m[32m        }[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    void App::init_drawboard_texture()[m
+[32m+[m[32m    {[m
+[32m+[m[32m        // create an OpenGL texture for the drawboard[m
+[32m+[m[32m        glGenTextures(1, &drawboard_texture);[m
+[32m+[m[32m        glBindTexture(GL_TEXTURE_2D, drawboard_texture);[m
+[32m+[m
+[32m+[m[32m        // filtering parameters[m
+[32m+[m[32m        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);[m
+[32m+[m[32m        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    void App::update_drawboard_texture()[m
+[32m+[m[32m    {[m
+[32m+[m[32m        // drawboard_image stores luminance values but ImGui wants RGB values,[m
+[32m+[m[32m        // so we'll handle that here. We'll also handle the OETF (so-called[m
+[32m+[m[32m        // gamma correction).[m
+[32m+[m[32m        std::array<float, 3u * N_DIGIT_VALUES> image_rgb{};[m
+[32m+[m[32m        for (size_t i = 0; i < N_DIGIT_VALUES; i++)[m
+[32m+[m[32m        {[m
+[32m+[m[32m            float v = std::pow(drawboard_image[i], 1.f / 2.2f);[m
+[32m+[m[32m            image_rgb[i * 3u + 0u] = v;[m
+[32m+[m[32m            image_rgb[i * 3u + 1u] = v;[m
+[32m+[m[32m            image_rgb[i * 3u + 2u] = v;[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        // upload RGB image data to the GPU[m
+[32m+[m[32m        glBindTexture(GL_TEXTURE_2D, drawboard_texture);[m
+[32m+[m[32m        glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);[m
+[32m+[m[32m        glTexImage2D([m
+[32m+[m[32m            GL_TEXTURE_2D,[m
+[32m+[m[32m            0,[m
+[32m+[m[32m            GL_RGB,[m
+[32m+[m[32m            DIGIT_WIDTH,[m
+[32m+[m[32m            DIGIT_HEIGHT,[m
+[32m+[m[32m            0,[m
+[32m+[m[32m            GL_RGB,[m
+[32m+[m[32m            GL_FLOAT,[m
+[32m+[m[32m            image_rgb.data()[m
+[32m+[m[32m        );[m
+[32m+[m[32m    }[m
+[32m+[m
+     void App::draw_ui()[m
+     {[m
+         // poll and handle events (inputs, window resize, etc.)[m
+[36m@@ -626,7 +679,7 @@[m [mnamespace digit_rec[m
+         ImGui::SameLine(content_start);[m
+         ImGui::SetNextItemWidth(image_size);[m
+         ImGui::Image([m
+[31m-            0,[m
+[32m+[m[32m            (ImTextureID)drawboard_texture,[m
+             { image_size, image_size }[m
+         );[m
+ [m
+[36m@@ -1104,6 +1157,9 @@[m [mnamespace digit_rec[m
+             training_thread->join();[m
+         }[m
+ [m
+[32m+[m[32m        clear_drawboard();[m
+[32m+[m[32m        update_drawboard_texture();[m
+[32m+[m
+         // switch UI to drawboard[m
+         ui_mode = UiMode::Drawboard;[m
+     }[m
+[1mdiff --git a/digit-recognition/src/app_digit_rec.hpp b/digit-recognition/src/app_digit_rec.hpp[m
+[1mindex 0d51a08..7d7913f 100644[m
+[1m--- a/digit-recognition/src/app_digit_rec.hpp[m
+[1m+++ b/digit-recognition/src/app_digit_rec.hpp[m
+[36m@@ -141,6 +141,9 @@[m [mnamespace digit_rec[m
+         // the last time we recalculated the accuracy[m
+         std::chrono::steady_clock::time_point last_accuracy_calc_time;[m
+ [m
+[32m+[m[32m        std::array<float, N_DIGIT_VALUES> drawboard_image{ 0.f };[m
+[32m+[m[32m        GLuint drawboard_texture = 0;[m
+[32m+[m
+         void init_ui();[m
+         void draw_ui();[m
+ [m
+[36m@@ -172,6 +175,10 @@[m [mnamespace digit_rec[m
+         // scales a proportional size by the main window's width[m
+         float scaled(float size) const;[m
+ [m
+[32m+[m[32m        void clear_drawboard();[m
+[32m+[m[32m        void init_drawboard_texture();[m
+[32m+[m[32m        void update_drawboard_texture();[m
+[32m+[m
+     };[m
+ [m
+ }[m

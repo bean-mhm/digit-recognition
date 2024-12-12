@@ -57,6 +57,10 @@ namespace digit_rec
         }
 
         init_ui();
+
+        clear_drawboard();
+        init_drawboard_texture();
+        update_drawboard_texture();
     }
 
     void App::loop()
@@ -237,6 +241,55 @@ namespace digit_rec
     float App::scaled(float size) const
     {
         return size * imgui_window_width;
+    }
+
+    void App::clear_drawboard()
+    {
+        for (auto& v : drawboard_image)
+        {
+            v = 0.f;
+        }
+    }
+
+    void App::init_drawboard_texture()
+    {
+        // create an OpenGL texture for the drawboard
+        glGenTextures(1, &drawboard_texture);
+        glBindTexture(GL_TEXTURE_2D, drawboard_texture);
+
+        // filtering parameters
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    }
+
+    void App::update_drawboard_texture()
+    {
+        // drawboard_image stores luminance values but ImGui wants RGB values,
+        // so we'll handle that here. We'll also handle the OETF (so-called
+        // gamma correction).
+        std::array<float, 3u * N_DIGIT_VALUES> image_rgb{};
+        for (size_t i = 0; i < N_DIGIT_VALUES; i++)
+        {
+            float v = std::pow(drawboard_image[i], 1.f / 2.2f);
+            image_rgb[i * 3u + 0u] = v;
+            image_rgb[i * 3u + 1u] = v;
+            image_rgb[i * 3u + 2u] = v;
+        }
+
+        // upload RGB image data to the GPU
+        glBindTexture(GL_TEXTURE_2D, drawboard_texture);
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+        glTexImage2D(
+            GL_TEXTURE_2D,
+            0,
+            GL_RGB,
+            DIGIT_WIDTH,
+            DIGIT_HEIGHT,
+            0,
+            GL_RGB,
+            GL_FLOAT,
+            image_rgb.data()
+        );
     }
 
     void App::draw_ui()
@@ -626,7 +679,7 @@ namespace digit_rec
         ImGui::SameLine(content_start);
         ImGui::SetNextItemWidth(image_size);
         ImGui::Image(
-            0,
+            (ImTextureID)drawboard_texture,
             { image_size, image_size }
         );
 
@@ -1103,6 +1156,9 @@ namespace digit_rec
             training_thread->request_stop();
             training_thread->join();
         }
+
+        clear_drawboard();
+        update_drawboard_texture();
 
         // switch UI to drawboard
         ui_mode = UiMode::Drawboard;

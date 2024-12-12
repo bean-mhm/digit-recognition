@@ -141,6 +141,9 @@ namespace digit_rec
         // the last time we recalculated the accuracy
         std::chrono::steady_clock::time_point last_accuracy_calc_time;
 
+        std::array<float, N_DIGIT_VALUES> drawboard_image{ 0.f };
+        GLuint drawboard_texture = 0;
+
         void init_ui();
         void draw_ui();
 
@@ -171,6 +174,10 @@ namespace digit_rec
 
         // scales a proportional size by the main window's width
         float scaled(float size) const;
+
+        void clear_drawboard();
+        void init_drawboard_texture();
+        void update_drawboard_texture();
 
     };
 
