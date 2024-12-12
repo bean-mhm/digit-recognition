@@ -859,12 +859,12 @@ namespace digit_rec
             const float scale = .9f + .2f * dist(engine);
             const float inv_scale = 1.f / scale;
 
-            const float rotation = (-4.f + 8.f * dist(engine)) * DEG2RAD;
+            const float rotation = (-2.f + 4.f * dist(engine)) * DEG2RAD;
             const float sin_a = std::sin(rotation);
             const float cos_a = std::cos(rotation);
 
-            const float offset_x = -.1f + .2f * dist(engine);
-            const float offset_y = -.1f + .2f * dist(engine);
+            const float offset_x = -.16f + .32f * dist(engine);
+            const float offset_y = -.16f + .32f * dist(engine);
 
             for (int32_t y = 0; y < DIGIT_HEIGHT; y++)
             {
@@ -1615,10 +1615,55 @@ namespace digit_rec
             top_three_values
         );
 
-        network_guess_text = std::format(
-            "Looks like a {}",
-            top_three_idx[0]
-        );
+        static constexpr const char* AN_BEFORE_DIGIT[10]{
+            "a", "a", "a", "a", "a", "a", "a", "a", "an", "a"
+        };
+
+        if (top_three_values[0] > .9f)
+        {
+            network_guess_text = std::format(
+                "That's definitely {} {}",
+                AN_BEFORE_DIGIT[top_three_idx[0]],
+                top_three_idx[0]
+            );
+        }
+        else if (top_three_values[0] > .65f)
+        {
+            network_guess_text = std::format(
+                "Looks like {} {}",
+                AN_BEFORE_DIGIT[top_three_idx[0]],
+                top_three_idx[0]
+            );
+        }
+        else if (top_three_values[0] > .6f)
+        {
+            network_guess_text = std::format(
+                "Looks like {} {}, I think",
+                AN_BEFORE_DIGIT[top_three_idx[0]],
+                top_three_idx[0]
+            );
+        }
+        else if (top_three_values[0] > .5f)
+        {
+            network_guess_text = std::format(
+                "Hmm... looks like {} {}",
+                AN_BEFORE_DIGIT[top_three_idx[0]],
+                top_three_idx[0]
+            );
+
+            if (top_three_values[1] > .4f)
+            {
+                network_guess_text += std::format(
+                    "... maybe {} {} too?!",
+                    AN_BEFORE_DIGIT[top_three_idx[1]],
+                    top_three_idx[1]
+                );
+            }
+        }
+        else
+        {
+            network_guess_text = "I've no idea what that looks like.";
+        }
     }
 
 }
