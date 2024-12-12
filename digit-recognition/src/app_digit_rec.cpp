@@ -3,6 +3,15 @@
 namespace digit_rec
 {
 
+    static void glfw_error_callback(int error, const char* description)
+    {
+        throw std::runtime_error(std::format(
+            "GLFW error {}: {}",
+            error,
+            description
+        ));
+    }
+
     void App::run()
     {
         init();
@@ -11,15 +20,6 @@ namespace digit_rec
             loop();
         }
         cleanup();
-    }
-
-    static void glfw_error_callback(int error, const char* description)
-    {
-        throw std::runtime_error(std::format(
-            "GLFW error {}: {}",
-            error,
-            description
-        ));
     }
 
     void App::init()
@@ -58,9 +58,8 @@ namespace digit_rec
 
         init_ui();
 
-        clear_drawboard();
         init_drawboard_texture();
-        update_drawboard_texture();
+        reset_drawboard();
     }
 
     void App::loop()
@@ -238,65 +237,6 @@ namespace digit_rec
         {
             throw std::runtime_error("failed to load fonts");
         }
-    }
-
-    float App::scaled(float size) const
-    {
-        return size * imgui_window_width;
-    }
-
-    void App::clear_drawboard()
-    {
-        for (auto& v : drawboard_image)
-        {
-            v = 0.f;
-        }
-    }
-
-    void App::init_drawboard_texture()
-    {
-        // create an OpenGL texture for the drawboard
-        glGenTextures(1, &drawboard_texture);
-        glBindTexture(GL_TEXTURE_2D, drawboard_texture);
-
-        // filtering parameters
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    }
-
-    void App::update_drawboard_texture()
-    {
-        // drawboard_image stores luminance values but ImGui wants RGB values,
-        // so we'll handle that here. We'll also handle the OETF (so-called
-        // gamma correction).
-        std::array<float, 3u * N_DIGIT_VALUES> image_rgb{};
-        for (size_t i = 0; i < N_DIGIT_VALUES; i++)
-        {
-            float v = std::pow(drawboard_image[i], 1.f / 2.2f);
-            image_rgb[i * 3u + 0u] = v;
-            image_rgb[i * 3u + 1u] = v;
-            image_rgb[i * 3u + 2u] = v;
-        }
-
-        // upload RGB image data to the GPU
-        glBindTexture(GL_TEXTURE_2D, drawboard_texture);
-        glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-        glTexImage2D(
-            GL_TEXTURE_2D,
-            0,
-            GL_RGB,
-            DIGIT_WIDTH,
-            DIGIT_HEIGHT,
-            0,
-            GL_RGB,
-            GL_FLOAT,
-            image_rgb.data()
-        );
-    }
-
-    void App::cleanup_drawboard()
-    {
-        glDeleteTextures(1, &drawboard_texture);
     }
 
     void App::draw_ui()
@@ -690,6 +630,16 @@ namespace digit_rec
             { image_size, image_size }
         );
 
+        if (ImGui::IsItemHovered()
+            && ImGui::IsMouseDown(ImGuiMouseButton_Right))
+        {
+            reset_drawboard();
+        }
+        else
+        {
+            handle_drawboard_drawing();
+        }
+
         //
 
         const float footer_height = scaled(.1f);
@@ -778,12 +728,6 @@ namespace digit_rec
         }
     }
 
-    // linear interpolation
-    static float mix(float a, float b, float t)
-    {
-        return a + t * (b - a);
-    }
-
     // read digit sample data from src_digit and render a randomly transformed
     // version of it into dst_digit. both arrays are expected to contain at
     // least N_DIGIT_VALUES values.
@@ -827,7 +771,7 @@ namespace digit_rec
             {
                 for (int32_t x = 0; x < DIGIT_WIDTH; x++)
                 {
-                    // UV coordinates from -1 to +1, (0, 0) is center.
+                    // UV coordinates from -1 to +1. (0, 0) is the center.
                     float u = (float)x + .5f - HALF_WIDTH;
                     float v = (float)y + .5f - HALF_HEIGHT;
                     u *= MAX_DIM_INV * 2.f;
@@ -888,9 +832,9 @@ namespace digit_rec
                     }
 
                     float horiz_mix = coord_x - ((float)icoord_tl_x + .5f);
-                    dst_digit[y * DIGIT_WIDTH + x] = mix(
-                        mix(tl, tr, horiz_mix),
-                        mix(bl, br, horiz_mix),
+                    dst_digit[y * DIGIT_WIDTH + x] = math::mix(
+                        math::mix(tl, tr, horiz_mix),
+                        math::mix(bl, br, horiz_mix),
                         coord_y - ((float)icoord_tl_y + .5f)
                     );
                 }
@@ -1154,6 +1098,8 @@ namespace digit_rec
 
         // switch UI to training mode
         ui_mode = UiMode::Training;
+
+        return std::nullopt;
     }
 
     void App::stop_training()
@@ -1164,10 +1110,7 @@ namespace digit_rec
             training_thread->join();
         }
 
-        clear_drawboard();
-        update_drawboard_texture();
-
-        // switch UI to drawboard
+        reset_drawboard();
         ui_mode = UiMode::Drawboard;
     }
 
@@ -1340,7 +1283,10 @@ namespace digit_rec
     void App::draw_info_icon_at_end_of_current_line()
     {
         const float icon_size = ImGui::GetFontSize();
-        ImU32 icon_color = ImGui::GetColorU32({ 1.f, 1.f, 1.f, .14f });
+        ImU32 icon_color = ImGui::GetColorU32(
+            ImGui::GetStyle().Colors[ImGuiCol_ButtonHovered]
+        );
+
         ImGui::GetWindowDrawList()->AddCircle(
             {
                 scaled(1.f - WINDOW_PAD) - .5f * icon_size,
@@ -1378,6 +1324,176 @@ namespace digit_rec
 
         ImGui::SameLine(scaled(1.f - WINDOW_PAD) - icon_size);
         ImGui::Dummy({ icon_size, icon_size });
+    }
+
+    float App::scaled(float size) const
+    {
+        return size * imgui_window_width;
+    }
+
+    void App::reset_drawboard()
+    {
+        drawboard_last_mouse_down = false;
+        for (auto& v : drawboard_image)
+        {
+            v = 0.f;
+        }
+        update_drawboard_texture();
+    }
+
+    void App::init_drawboard_texture()
+    {
+        // create an OpenGL texture for the drawboard
+        glGenTextures(1, &drawboard_texture);
+        glBindTexture(GL_TEXTURE_2D, drawboard_texture);
+
+        // filtering parameters
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    }
+
+    void App::update_drawboard_texture()
+    {
+        // drawboard_image stores luminance values but ImGui wants RGB values,
+        // so we'll handle that here. We'll also handle the OETF (so-called
+        // gamma correction).
+        std::array<float, 3u * N_DIGIT_VALUES> image_rgb{};
+        for (size_t i = 0; i < N_DIGIT_VALUES; i++)
+        {
+            float v = std::pow(drawboard_image[i], 1.f / 2.2f);
+            image_rgb[i * 3u + 0u] = v;
+            image_rgb[i * 3u + 1u] = v;
+            image_rgb[i * 3u + 2u] = v;
+        }
+
+        // upload RGB image data to the GPU
+        glBindTexture(GL_TEXTURE_2D, drawboard_texture);
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+        glTexImage2D(
+            GL_TEXTURE_2D,
+            0,
+            GL_RGB,
+            DIGIT_WIDTH,
+            DIGIT_HEIGHT,
+            0,
+            GL_RGB,
+            GL_FLOAT,
+            image_rgb.data()
+        );
+    }
+
+    void App::cleanup_drawboard()
+    {
+        glDeleteTextures(1, &drawboard_texture);
+    }
+
+    void App::handle_drawboard_drawing()
+    {
+        const float cursor_x = io->MousePos.x;
+        const float cursor_y = io->MousePos.y;
+
+        bool mouse_down =
+            ImGui::IsMouseDown(ImGuiMouseButton_Left)
+            && ImGui::IsItemHovered();
+
+        // to draw anything, mouse should be down in both the last frame and the
+        // current frame, and the cursor should be moved.
+        if (!drawboard_last_mouse_down
+            || !mouse_down
+            || (
+                cursor_x == drawboard_last_cursor_x
+                && cursor_y == drawboard_last_cursor_y
+                )
+            )
+        {
+            // update last values and return
+            drawboard_last_mouse_down = mouse_down;
+            drawboard_last_cursor_x = cursor_x;
+            drawboard_last_cursor_y = cursor_y;
+            return;
+        }
+
+        // constants
+
+        const float img_left = ImGui::GetItemRectMin().x;
+        const float img_right = ImGui::GetItemRectMax().x;
+        const float img_top = ImGui::GetItemRectMin().y;
+        const float img_bottom = ImGui::GetItemRectMax().y;
+
+        const float img_width = img_right - img_left;
+        const float img_height = img_bottom - img_top;
+
+        const float img_half_width = .5f * img_width;
+        const float img_half_height = .5f * img_height;
+
+        const float img_max_dim = std::max(img_width, img_height);
+        const float img_max_dim_inv = 1.f / img_max_dim;
+
+        const float img_center_x = img_left + img_half_width;
+        const float img_center_y = img_top + img_half_height;
+
+        static constexpr float DIGIT_HALF_WIDTH = .5f * (float)DIGIT_WIDTH;
+        static constexpr float DIGIT_HALF_HEIGHT = .5f * (float)DIGIT_HEIGHT;
+
+        static constexpr float DIGIT_MAX_DIM =
+            (float)std::max(DIGIT_WIDTH, DIGIT_HEIGHT);
+        static constexpr float DIGIT_MAX_DIM_INV = 1.f / DIGIT_MAX_DIM;
+
+        // all UV coordinates below are from -1 to +1. (0, 0) is the center.
+
+        // UV coordinates of the starting point and the end point of the line
+        // segment that we're about to draw.
+        float start_u = drawboard_last_cursor_x - img_center_x;
+        float start_v = drawboard_last_cursor_y - img_center_y;
+        float end_u = cursor_x - img_center_x;
+        float end_v = cursor_y - img_center_y;
+        start_u *= img_max_dim_inv * 2.f;
+        start_v *= img_max_dim_inv * 2.f;
+        end_u *= img_max_dim_inv * 2.f;
+        end_v *= img_max_dim_inv * 2.f;
+
+        // draw line segment using signed distance fields
+        // see https://iquilezles.org/articles/distfunctions2d/
+        for (int32_t y = 0; y < DIGIT_HEIGHT; y++)
+        {
+            for (int32_t x = 0; x < DIGIT_WIDTH; x++)
+            {
+                // UV coordinates from -1 to +1. (0, 0) is the center.
+                float u = (float)x + .5f - DIGIT_HALF_WIDTH;
+                float v = (float)y + .5f - DIGIT_HALF_HEIGHT;
+                u *= DIGIT_MAX_DIM_INV * 2.f;
+                v *= DIGIT_MAX_DIM_INV * 2.f;
+
+                // distance of UV from the line segment
+                float dist = math::dist_segment(
+                    u, v,
+                    start_u, start_v,
+                    end_u, end_v
+                );
+
+                // target value for this pixel, which gets brighter as UV gets
+                // closer to the line segment.
+                float target_v = math::remap01(dist, .13f, .02f);
+                target_v *= target_v;
+
+                // current value of this pixel
+                float curr_v = drawboard_image[y * DIGIT_WIDTH + x];
+
+                // take the maximum of the current and target values
+                float final_v = std::max(curr_v, target_v);
+
+                // update the drawboard image
+                drawboard_image[y * DIGIT_WIDTH + x] = final_v;
+            }
+        }
+
+        // update last values
+        drawboard_last_mouse_down = mouse_down;
+        drawboard_last_cursor_x = cursor_x;
+        drawboard_last_cursor_y = cursor_y;
+
+        // update the texture
+        update_drawboard_texture();
     }
 
 }

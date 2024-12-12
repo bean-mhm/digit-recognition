@@ -34,6 +34,7 @@
 #include "endian.hpp"
 #include "stream.hpp"
 #include "str.hpp"
+#include "math.hpp"
 
 namespace digit_rec
 {
@@ -141,9 +142,6 @@ namespace digit_rec
         // the last time we recalculated the accuracy
         std::chrono::steady_clock::time_point last_accuracy_calc_time;
 
-        std::array<float, N_DIGIT_VALUES> drawboard_image{ 0.f };
-        GLuint drawboard_texture = 0;
-
         void init_ui();
         void draw_ui();
 
@@ -175,10 +173,21 @@ namespace digit_rec
         // scales a proportional size by the main window's width
         float scaled(float size) const;
 
-        void clear_drawboard();
+    private:
+        std::array<float, N_DIGIT_VALUES> drawboard_image{ 0.f };
+        GLuint drawboard_texture = 0;
+
+        bool drawboard_last_mouse_down = false;
+        float drawboard_last_cursor_x = 0.f;
+        float drawboard_last_cursor_y = 0.f;
+
+        void reset_drawboard();
         void init_drawboard_texture();
         void update_drawboard_texture();
         void cleanup_drawboard();
+
+        // MUST be called right after the ImGui::Image() call for the drawboard.
+        void handle_drawboard_drawing();
 
     };
 
