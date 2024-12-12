@@ -526,11 +526,17 @@ namespace digit_rec
                 }
             ))
             {
-                auto result = start_training();
+                auto result = prepare_for_training();
                 if (result.has_value())
                 {
                     error_text = result.value();
                     should_open_error_popup = true;
+                }
+                else
+                {
+                    recalculate_accuracy_and_add_to_history();
+                    start_training_thread();
+                    ui_mode = UiMode::Training;
                 }
             }
         }
@@ -640,7 +646,9 @@ namespace digit_rec
                 }
             ))
             {
-                stop_training();
+                stop_training_thread();
+                reset_drawboard();
+                ui_mode = UiMode::Drawboard;
             }
         }
         ImGui::EndChild();
@@ -776,7 +784,8 @@ namespace digit_rec
                 }
             ))
             {
-                //
+                start_training_thread();
+                ui_mode = UiMode::Training;
             }
         }
         ImGui::EndChild();
@@ -975,7 +984,7 @@ namespace digit_rec
         }
     }
 
-    std::optional<std::string> App::start_training()
+    std::optional<std::string> App::prepare_for_training()
     {
         // parse and verify layer sizes
 
@@ -1106,13 +1115,19 @@ namespace digit_rec
         accuracy_history.clear();
         n_training_steps = 0;
 
-        // start the training thread
+        // seed the RNGs
+        rng_train_pick_sample.seed(val_seed);
+        rng_train_random_transforms.seed(val_seed);
+
+        return std::nullopt;
+    }
+
+    void App::start_training_thread()
+    {
         last_accuracy_calc_time = std::chrono::high_resolution_clock::now();
         training_thread = std::make_unique<std::jthread>(
             [this](std::stop_token stoken)
             {
-                recalculate_accuracy_and_add_to_history();
-
                 // number of floats in a single training example which contains
                 // input data + expected output data.
                 static constexpr size_t TRAINING_DATA_SIZE =
@@ -1131,13 +1146,10 @@ namespace digit_rec
                     );
                 }
 
-                std::mt19937 rng_pick_sample(val_seed);
                 std::uniform_int_distribution<size_t> sizet_dist(
                     0,
                     train_samples.size() - 1u
                 );
-
-                std::mt19937 rng_random_transforms(val_seed);
 
                 while (!stoken.stop_requested())
                 {
@@ -1156,7 +1168,7 @@ namespace digit_rec
 
                         // randomly pick a digit sample from the dataset
                         const auto& samp =
-                            train_samples[sizet_dist(rng_pick_sample)];
+                            train_samples[sizet_dist(rng_train_pick_sample)];
 
                         // update input data
                         for (size_t i = 0; i < N_DIGIT_VALUES; i++)
@@ -1175,7 +1187,7 @@ namespace digit_rec
                             );
 
                             apply_random_transform(
-                                rng_random_transforms,
+                                rng_train_random_transforms,
                                 digit_data_copy,
                                 input_data,
                                 true
@@ -1206,23 +1218,15 @@ namespace digit_rec
                 }
             }
         );
-
-        // switch UI to training mode
-        ui_mode = UiMode::Training;
-
-        return std::nullopt;
     }
 
-    void App::stop_training()
+    void App::stop_training_thread()
     {
         if (training_thread)
         {
             training_thread->request_stop();
             training_thread->join();
         }
-
-        reset_drawboard();
-        ui_mode = UiMode::Drawboard;
     }
 
     void App::recalculate_accuracy_and_add_to_history()

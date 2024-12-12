@@ -143,6 +143,10 @@ namespace digit_rec
         // the last time we recalculated the accuracy
         std::chrono::steady_clock::time_point last_accuracy_calc_time;
 
+        // pseudo-random number generators for training
+        std::mt19937 rng_train_pick_sample{ 0 };
+        std::mt19937 rng_train_random_transforms{ 0 };
+
         void init_ui();
         void draw_ui();
 
@@ -157,9 +161,11 @@ namespace digit_rec
         );
 
         // returns std::nullopt on success, and an error message on failure.
-        std::optional<std::string> start_training();
+        std::optional<std::string> prepare_for_training();
 
-        void stop_training();
+        // net must be already initialized before this is called.
+        void start_training_thread();
+        void stop_training_thread();
 
         void recalculate_accuracy_and_add_to_history();
 
