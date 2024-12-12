@@ -70,6 +70,8 @@ namespace digit_rec
 
     void App::cleanup()
     {
+        cleanup_drawboard();
+
         ImGui_ImplOpenGL3_Shutdown();
         ImGui_ImplGlfw_Shutdown();
         ImGui::DestroyContext();
@@ -290,6 +292,11 @@ namespace digit_rec
             GL_FLOAT,
             image_rgb.data()
         );
+    }
+
+    void App::cleanup_drawboard()
+    {
+        glDeleteTextures(1, &drawboard_texture);
     }
 
     void App::draw_ui()

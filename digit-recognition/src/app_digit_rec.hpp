@@ -178,6 +178,7 @@ namespace digit_rec
         void clear_drawboard();
         void init_drawboard_texture();
         void update_drawboard_texture();
+        void cleanup_drawboard();
 
     };
 
