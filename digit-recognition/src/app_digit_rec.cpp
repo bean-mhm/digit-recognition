@@ -36,6 +36,24 @@ namespace digit_rec
             ));
         }
 
+        // store one of the samples as a PPM file to see what they look like.
+        // this is only for testing;
+        if (0)
+        {
+            std::ofstream f("./digit.ppm", std::ios::out | std::ios::trunc);
+            if (!f.is_open())
+            {
+                throw std::runtime_error("failed to write test PPM image file");
+            }
+            f << "P3 " << DIGIT_WIDTH << " " << DIGIT_HEIGHT << " 255\n";
+
+            const auto& samp = train_samples[1004];
+            for (auto v : samp.values)
+            {
+                f << std::format("{0} {0} {0}\n", v);
+            }
+        }
+
         init_ui();
     }
 
@@ -674,7 +692,9 @@ namespace digit_rec
                 float coord_y = v2 * .5f * DIGIT_MAX_DIM + HALF_DIGIT_HEIGHT;
 
                 // sample from src_digit with bilinear interpolation
-                TODO;
+                int32_t icoord_bl_x = (int32_t)std::floor(coord_x - .4999f);
+                int32_t icoord_bl_y = (int32_t)std::floor(coord_y - .4999f);
+                // TODO
             }
         }
     }
