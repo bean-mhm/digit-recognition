@@ -3,6 +3,48 @@
 namespace digit_rec
 {
 
+    static std::array<int64_t, 3> find_top_three_indexes(
+        std::span<float> values,
+        std::array<float, 3>& top_three_values
+    )
+    {
+        int64_t largest_idx = -1, second_idx = -1, third_idx = -1;
+        float largest = -std::numeric_limits<float>::infinity();
+        float second = largest;
+        float third = largest;
+
+        for (int64_t i = 0; i < values.size(); i++)
+        {
+            if (values[i] > largest)
+            {
+                third = second;
+                third_idx = second_idx;
+
+                second = largest;
+                second_idx = largest_idx;
+
+                largest = values[i];
+                largest_idx = i;
+            }
+            else if (values[i] > second)
+            {
+                third = second;
+                third_idx = second_idx;
+
+                second = values[i];
+                second_idx = i;
+            }
+            else if (values[i] > third)
+            {
+                third = values[i];
+                third_idx = i;
+            }
+        }
+
+        top_three_values = { largest, second, third };
+        return { largest_idx, second_idx, third_idx };
+    }
+
     static void glfw_error_callback(int error, const char* description)
     {
         throw std::runtime_error(std::format(
@@ -612,7 +654,7 @@ namespace digit_rec
         );
 
         ImGui::SameLine(content_start);
-        ImGui::Text("Looks like a 3... I think.");
+        ImGui::Text(network_guess_text.c_str());
 
         draw_info_icon_at_end_of_current_line();
         network_summary_tooltip();
@@ -637,8 +679,65 @@ namespace digit_rec
         }
         else
         {
-            handle_drawboard_drawing();
+            bool actually_drew_something = false;
+            handle_drawboard_drawing(actually_drew_something);
+
+            // if the drawboard changed, evaluate the network and check the
+            // predicted digit label.
+            if (actually_drew_something)
+            {
+                auto net_input = net->input_values();
+                for (size_t i = 0; i < N_DIGIT_VALUES; i++)
+                {
+                    net_input[i] = drawboard_image[i];
+                }
+                net->forward_pass();
+
+                update_network_guess_text();
+            }
         }
+
+        //
+
+        auto img_rect_min = ImGui::GetItemRectMin();
+        auto img_rect_max = ImGui::GetItemRectMax();
+
+        ImGui::SetNextWindowPos({
+            img_rect_max.x + scaled(2.f * COLUMN_SPACING),
+            img_rect_min.y
+            });
+        ImGui::BeginChild(
+            "##network_output_panel",
+            {
+                scaled(1.f - 2.f * COLUMN_SPACING - WINDOW_PAD)
+                - img_rect_max.x,
+            image_size
+            },
+            0,
+            ImGuiWindowFlags_NoBackground
+            | ImGuiWindowFlags_NoCollapse
+            | ImGuiWindowFlags_NoSavedSettings
+        );
+        {
+            auto net_output = net->output_values();
+            for (size_t i = 0; i < 10; i++)
+            {
+                ImGui::Text("%zu", i);
+
+                ImGui::SameLine(scaled(.03f));
+                ImGui::ProgressBar(
+                    std::clamp(net_output[i], 0.f, 1.f),
+                    {
+                        .7f * ImGui::GetWindowWidth(),
+                        ImGui::GetItemRectSize().y
+                    },
+                    "##"
+                );
+
+                ImGui::Dummy({ 1.f, 0.f });
+            }
+        }
+        ImGui::EndChild();
 
         //
 
@@ -1334,6 +1433,8 @@ namespace digit_rec
     void App::reset_drawboard()
     {
         drawboard_last_mouse_down = false;
+        network_guess_text = DEFAULT_NETWORK_GUESS_TEXT;
+
         for (auto& v : drawboard_image)
         {
             v = 0.f;
@@ -1387,8 +1488,10 @@ namespace digit_rec
         glDeleteTextures(1, &drawboard_texture);
     }
 
-    void App::handle_drawboard_drawing()
+    void App::handle_drawboard_drawing(bool& out_actually_drew_something)
     {
+        out_actually_drew_something = false;
+
         const float cursor_x = io->MousePos.x;
         const float cursor_y = io->MousePos.y;
 
@@ -1473,7 +1576,7 @@ namespace digit_rec
 
                 // target value for this pixel, which gets brighter as UV gets
                 // closer to the line segment.
-                float target_v = math::remap01(dist, .13f, .02f);
+                float target_v = math::remap01(dist, .15f, .02f);
                 target_v *= target_v;
 
                 // current value of this pixel
@@ -1494,6 +1597,28 @@ namespace digit_rec
 
         // update the texture
         update_drawboard_texture();
+
+        out_actually_drew_something = true;
+    }
+
+    void App::update_network_guess_text()
+    {
+        if (!net)
+        {
+            network_guess_text = "No neural network";
+            return;
+        }
+
+        std::array<float, 3> top_three_values{};
+        auto top_three_idx = find_top_three_indexes(
+            net->output_values(),
+            top_three_values
+        );
+
+        network_guess_text = std::format(
+            "Looks like a {}",
+            top_three_idx[0]
+        );
     }
 
 }

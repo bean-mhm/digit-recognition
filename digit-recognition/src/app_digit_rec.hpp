@@ -15,6 +15,7 @@
 #include <atomic>
 #include <chrono>
 #include <limits>
+#include <algorithm>
 #include <random>
 #include <stdexcept>
 #include <cmath>
@@ -181,13 +182,19 @@ namespace digit_rec
         float drawboard_last_cursor_x = 0.f;
         float drawboard_last_cursor_y = 0.f;
 
+        static constexpr auto DEFAULT_NETWORK_GUESS_TEXT =
+            "Draw some digits! Right click to clear.";
+        std::string network_guess_text = DEFAULT_NETWORK_GUESS_TEXT;
+
         void reset_drawboard();
         void init_drawboard_texture();
         void update_drawboard_texture();
         void cleanup_drawboard();
 
         // MUST be called right after the ImGui::Image() call for the drawboard.
-        void handle_drawboard_drawing();
+        void handle_drawboard_drawing(bool& out_actually_drew_something);
+
+        void update_network_guess_text();
 
     };
 
