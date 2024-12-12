@@ -533,24 +533,23 @@ namespace digit_rec
 
     void App::layout_training()
     {
-        const float padded_width = scaled(
-            .5f - COLUMN_SPACING - WINDOW_PAD
-        );
         const float content_start = scaled(WINDOW_PAD);
         const float content_width = scaled(
             1.f - 2.f * WINDOW_PAD
         );
 
         ImGui::SameLine(content_start);
-        ImGui::SetNextItemWidth(content_width);
         if (accuracy_history.empty())
         {
-            ImGui::Text("Accuracy");
+            ImGui::Text("Accuracy: -");
         }
         else
         {
             ImGui::Text("Accuracy: %.1f%%", accuracy_history.back() * 100.f);
         }
+
+        ImGui::SameLine();
+        ImGui::Text("(Network Info)");
         network_summary_tooltip();
 
         ImGui::NewLine();
@@ -601,7 +600,62 @@ namespace digit_rec
     }
 
     void App::layout_drawboard()
-    {}
+    {
+        const float content_start = scaled(WINDOW_PAD);
+        const float content_width = scaled(
+            1.f - 2.f * WINDOW_PAD
+        );
+
+        ImGui::SameLine(content_start);
+        ImGui::Text("Looks like a 3... I think.");
+
+        ImGui::SameLine();
+        ImGui::Text("(Network Info)");
+        network_summary_tooltip();
+
+        ImGui::NewLine();
+
+        //
+
+        const float image_size = content_width * .53f;
+
+        ImGui::SameLine(content_start);
+        ImGui::SetNextItemWidth(image_size);
+        ImGui::Image(
+            0,
+            { image_size, image_size }
+        );
+
+        //
+
+        const float footer_height = scaled(.1f);
+        ImGui::SetNextWindowPos(
+            { 0.f, ImGui::GetWindowHeight() - footer_height }
+        );
+        ImGui::BeginChild(
+            "##footer_drawboard",
+            { ImGui::GetWindowWidth(), footer_height },
+            0,
+            ImGuiWindowFlags_NoBackground
+            | ImGuiWindowFlags_NoCollapse
+            | ImGuiWindowFlags_NoSavedSettings
+        );
+        {
+            ImGui::SameLine(content_start);
+            if (ImGui::Button(
+                "Reset",
+                {
+                    content_width,
+                    scaled(.1f)
+                }
+            ))
+            {
+                net = nullptr;
+                ui_mode = UiMode::Settings;
+            }
+        }
+        ImGui::EndChild();
+    }
 
     void App::load_digit_samples(
         std::string_view images_path,
@@ -1177,6 +1231,18 @@ namespace digit_rec
         ImGui::SameLine();
         ImGui::Text("%llu", n_training_steps.load());
 
+        bold_text("Accuracy:");
+        ImGui::SameLine();
+        if (accuracy_history.empty())
+        {
+            ImGui::Text("-");
+        }
+        else
+        {
+            ImGui::Text("%.1f%%", accuracy_history.back() * 100.f);
+        }
+
+
         ImGui::EndTooltip();
 
         /*return std::format(
@@ -1187,7 +1253,8 @@ namespace digit_rec
             "Batch Size: {}\n"
             "Seed: {}\n"
             "Randomly Transform Images: {}\n"
-            "Training Steps: {}",
+            "Training Steps: {}\n"
+            "Accuracy: {}",
 
             s_layer_sizes,
             val_learning_rate,
@@ -1196,7 +1263,10 @@ namespace digit_rec
             val_batch_size,
             val_seed,
             val_random_transform,
-            n_training_steps.load()
+            n_training_steps.load(),
+
+            accuracy_history.empty()
+            ? "-" : std::to_string(accuracy_history.back())
         );*/
     }
 
