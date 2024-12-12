@@ -57,11 +57,9 @@ namespace digit_rec
 
     static constexpr ImVec4 COLOR_BG{ .043f, .098f, .141f, 1.f };
 
-    static constexpr float FONT_SIZE = 21.f;
-    static constexpr auto FONT_PATH =
-        "./JetBrainsMono/JetBrainsMono-Regular.ttf";
-    static constexpr auto FONT_BOLD_PATH =
-        "./JetBrainsMono/JetBrainsMono-Bold.ttf";
+    static constexpr float FONT_SIZE = 22.f;
+    static constexpr auto FONT_PATH = "./fonts/Outfit-Regular.ttf";
+    static constexpr auto FONT_BOLD_PATH = "./fonts/Outfit-Bold.ttf";
 
     static constexpr auto TRAIN_IMAGES_PATH =
         "./MNIST/train-images.idx3-ubyte";

@@ -455,7 +455,7 @@ namespace digit_rec
             &val_random_transform
         );
 
-        ImGui::Dummy({ 1.f, scaled(.15f) });
+        ImGui::Dummy({ 1.f, scaled(.145f) });
         ImGui::NewLine();
 
         //
@@ -553,7 +553,7 @@ namespace digit_rec
             (const char*)0,
             std::numeric_limits<float>::max(),
             std::numeric_limits<float>::max(),
-            ImVec2{ CONTENT_WIDTH, scaled(.48f) }
+            ImVec2{ CONTENT_WIDTH, scaled(.485f) }
         );
 
         ImGui::NewLine();

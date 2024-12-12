@@ -70,7 +70,7 @@
     </Link>
     <PostBuildEvent>
       <Command>XCOPY "$(ProjectDir)licenses\" "$(OutDir)licenses\" /S /Y
-XCOPY "$(ProjectDir)JetBrainsMono\" "$(OutDir)JetBrainsMono\" /S /Y</Command>
+XCOPY "$(ProjectDir)fonts\" "$(OutDir)fonts\" /S /Y</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -97,7 +97,7 @@ XCOPY "$(ProjectDir)JetBrainsMono\" "$(OutDir)JetBrainsMono\" /S /Y</Command>
     </Link>
     <PostBuildEvent>
       <Command>XCOPY "$(ProjectDir)licenses\" "$(OutDir)licenses\" /S /Y
-XCOPY "$(ProjectDir)JetBrainsMono\" "$(OutDir)JetBrainsMono\" /S /Y</Command>
+XCOPY "$(ProjectDir)fonts\" "$(OutDir)fonts\" /S /Y</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
