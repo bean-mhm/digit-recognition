@@ -57,7 +57,7 @@ namespace digit_rec
 
     static constexpr ImVec4 COLOR_BG{ .043f, .098f, .141f, 1.f };
 
-    static constexpr float FONT_SIZE = 23.f;
+    static constexpr float FONT_SIZE = 24.f;
     static constexpr auto FONT_PATH = "./fonts/Outfit-Regular.ttf";
     static constexpr auto FONT_BOLD_PATH = "./fonts/Outfit-Bold.ttf";
 
@@ -162,10 +162,12 @@ namespace digit_rec
         void recalculate_accuracy_and_add_to_history();
 
         // display a tooltip on the current UI item containing information about
-        // the neural network.
+        // the neural network (if mouse is hovering over the current item).
         void network_summary_tooltip();
 
+        // UI-related
         void bold_text(const char* s, va_list args = nullptr);
+        void draw_info_icon_at_end_of_current_line();
 
         // scales a proportional size by the main window's width
         float scaled(float size) const;

@@ -460,6 +460,7 @@ namespace digit_rec
         //
 
         static std::string error_text = "";
+        bool should_open_error_popup = false;
 
         const float footer_height = scaled(.1f);
         ImGui::SetNextWindowPos(
@@ -487,11 +488,16 @@ namespace digit_rec
                 if (result.has_value())
                 {
                     error_text = result.value();
-                    ImGui::OpenPopup("Error");
+                    should_open_error_popup = true;
                 }
             }
         }
         ImGui::EndChild();
+
+        if (should_open_error_popup)
+        {
+            ImGui::OpenPopup("Error");
+        }
 
         //
 
@@ -548,8 +554,7 @@ namespace digit_rec
             ImGui::Text("Accuracy: %.1f%%", accuracy_history.back() * 100.f);
         }
 
-        ImGui::SameLine();
-        ImGui::Text("(Network Info)");
+        draw_info_icon_at_end_of_current_line();
         network_summary_tooltip();
 
         ImGui::NewLine();
@@ -609,8 +614,7 @@ namespace digit_rec
         ImGui::SameLine(content_start);
         ImGui::Text("Looks like a 3... I think.");
 
-        ImGui::SameLine();
-        ImGui::Text("(Network Info)");
+        draw_info_icon_at_end_of_current_line();
         network_summary_tooltip();
 
         ImGui::NewLine();
@@ -1176,13 +1180,6 @@ namespace digit_rec
         );
     }
 
-    void App::bold_text(const char* s, va_list args)
-    {
-        ImGui::PushFont(font_bold);
-        ImGui::Text(s, args);
-        ImGui::PopFont();
-    }
-
     void App::network_summary_tooltip()
     {
         if (!net || !ImGui::IsItemHovered())
@@ -1268,6 +1265,56 @@ namespace digit_rec
             accuracy_history.empty()
             ? "-" : std::to_string(accuracy_history.back())
         );*/
+    }
+
+    void App::bold_text(const char* s, va_list args)
+    {
+        ImGui::PushFont(font_bold);
+        ImGui::Text(s, args);
+        ImGui::PopFont();
+    }
+
+    void App::draw_info_icon_at_end_of_current_line()
+    {
+        const float icon_size = ImGui::GetFontSize();
+        ImU32 icon_color = ImGui::GetColorU32({ 1.f, 1.f, 1.f, .14f });
+        ImGui::GetWindowDrawList()->AddCircle(
+            {
+                scaled(1.f - WINDOW_PAD) - .5f * icon_size,
+                ImGui::GetItemRectMin().y + .5f * icon_size
+            },
+            .55f * icon_size,
+            icon_color,
+            32,
+            2.f
+        );
+        ImGui::GetWindowDrawList()->AddLine(
+            {
+                scaled(1.f - WINDOW_PAD) - .5f * icon_size,
+                ImGui::GetItemRectMin().y + .18f * icon_size
+            },
+            {
+                scaled(1.f - WINDOW_PAD) - .5f * icon_size,
+                ImGui::GetItemRectMin().y + .62f * icon_size
+            },
+            icon_color,
+            2.f
+        );
+        ImGui::GetWindowDrawList()->AddLine(
+            {
+                scaled(1.f - WINDOW_PAD) - .5f * icon_size,
+                ImGui::GetItemRectMin().y + .72f * icon_size
+            },
+            {
+                scaled(1.f - WINDOW_PAD) - .5f * icon_size,
+                ImGui::GetItemRectMin().y + .8f * icon_size
+            },
+            icon_color,
+            2.f
+        );
+
+        ImGui::SameLine(scaled(1.f - WINDOW_PAD) - icon_size);
+        ImGui::Dummy({ icon_size, icon_size });
     }
 
 }
