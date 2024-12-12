@@ -455,29 +455,41 @@ namespace digit_rec
             &val_random_transform
         );
 
-        ImGui::Dummy({ 1.f, scaled(.145f) });
-        ImGui::NewLine();
-
         //
 
         static std::string error_text = "";
 
-        ImGui::SameLine(COLUMN_0_START);
-        if (ImGui::Button(
-            "Train",
-            {
-                scaled(1.f - 2.f * WINDOW_PAD),
-                scaled(.1f)
-            }
-        ))
+        static constexpr float FOOTER_HEIGHT = scaled(.1f);
+        ImGui::SetNextWindowPos(
+            { 0.f, ImGui::GetWindowHeight() - FOOTER_HEIGHT }
+        );
+        ImGui::BeginChild(
+            "##footer_settings",
+            { ImGui::GetWindowWidth(), FOOTER_HEIGHT },
+            0,
+            ImGuiWindowFlags_NoBackground
+            | ImGuiWindowFlags_NoCollapse
+            | ImGuiWindowFlags_NoSavedSettings
+        );
         {
-            auto result = start_training();
-            if (result.has_value())
+            ImGui::SameLine(COLUMN_0_START);
+            if (ImGui::Button(
+                "Train",
+                {
+                    scaled(1.f - 2.f * WINDOW_PAD),
+                    scaled(.1f)
+                }
+            ))
             {
-                error_text = result.value();
-                ImGui::OpenPopup("Error");
+                auto result = start_training();
+                if (result.has_value())
+                {
+                    error_text = result.value();
+                    ImGui::OpenPopup("Error");
+                }
             }
         }
+        ImGui::EndChild();
 
         //
 
@@ -556,22 +568,34 @@ namespace digit_rec
             ImVec2{ CONTENT_WIDTH, scaled(.485f) }
         );
 
-        ImGui::NewLine();
-        ImGui::NewLine();
-
         //
 
-        ImGui::SameLine(CONTENT_START);
-        if (ImGui::Button(
-            "Stop",
-            {
-                CONTENT_WIDTH,
-                scaled(.1f)
-            }
-        ))
+        static constexpr float FOOTER_HEIGHT = scaled(.1f);
+        ImGui::SetNextWindowPos(
+            { 0.f, ImGui::GetWindowHeight() - FOOTER_HEIGHT }
+        );
+        ImGui::BeginChild(
+            "##footer_training",
+            { ImGui::GetWindowWidth(), FOOTER_HEIGHT },
+            0,
+            ImGuiWindowFlags_NoBackground
+            | ImGuiWindowFlags_NoCollapse
+            | ImGuiWindowFlags_NoSavedSettings
+        );
         {
-            stop_training();
+            ImGui::SameLine(CONTENT_START);
+            if (ImGui::Button(
+                "Stop",
+                {
+                    CONTENT_WIDTH,
+                    scaled(.1f)
+                }
+            ))
+            {
+                stop_training();
+            }
         }
+        ImGui::EndChild();
     }
 
     void App::layout_drawboard()
