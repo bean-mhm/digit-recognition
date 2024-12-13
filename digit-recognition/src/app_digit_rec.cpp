@@ -694,13 +694,7 @@ namespace digit_rec
             // predicted digit label.
             if (actually_drew_something)
             {
-                auto net_input = net->input_values();
-                for (size_t i = 0; i < N_DIGIT_VALUES; i++)
-                {
-                    net_input[i] = drawboard_image[i];
-                }
-                net->forward_pass();
-
+                network_evaluate_drawboard();
                 update_network_guess_text();
             }
         }
@@ -766,7 +760,7 @@ namespace digit_rec
             if (ImGui::Button(
                 "Reset",
                 {
-                    .5f * content_width - scaled(COLUMN_SPACING),
+                    content_width / 3.f - scaled(COLUMN_SPACING),
                     scaled(.1f)
                 }
             ))
@@ -777,9 +771,21 @@ namespace digit_rec
 
             ImGui::SameLine(0.f, 2.f * scaled(COLUMN_SPACING));
             if (ImGui::Button(
+                "Pick Test Sample",
+                {
+                    content_width / 3.f - scaled(COLUMN_SPACING),
+                    scaled(.1f)
+                }
+            ))
+            {
+                drawboard_load_random_test_sample();
+            }
+
+            ImGui::SameLine(0.f, 2.f * scaled(COLUMN_SPACING));
+            if (ImGui::Button(
                 "Train More",
                 {
-                    .5f * content_width - scaled(COLUMN_SPACING),
+                    content_width / 3.f - scaled(COLUMN_SPACING),
                     scaled(.1f)
                 }
             ))
@@ -1118,6 +1124,8 @@ namespace digit_rec
         // seed the RNGs
         rng_train_pick_sample.seed(val_seed);
         rng_train_random_transforms.seed(val_seed);
+        rng_drawboard_pick_test_sample.seed(val_seed);
+        rng_drawboard_random_test_sample_random_transforms.seed(val_seed);
 
         return std::nullopt;
     }
@@ -1146,7 +1154,7 @@ namespace digit_rec
                     );
                 }
 
-                std::uniform_int_distribution<size_t> sizet_dist(
+                std::uniform_int_distribution<size_t> idx_dist(
                     0,
                     train_samples.size() - 1u
                 );
@@ -1168,7 +1176,7 @@ namespace digit_rec
 
                         // randomly pick a digit sample from the dataset
                         const auto& samp =
-                            train_samples[sizet_dist(rng_train_pick_sample)];
+                            train_samples[idx_dist(rng_train_pick_sample)];
 
                         // update input data
                         for (size_t i = 0; i < N_DIGIT_VALUES; i++)
@@ -1592,7 +1600,7 @@ namespace digit_rec
 
                 // target value for this pixel, which gets brighter as UV gets
                 // closer to the line segment.
-                float target_v = math::remap01(dist, .15f, .02f);
+                float target_v = math::remap01(dist, .15f, .05f);
                 target_v *= target_v;
 
                 // current value of this pixel
@@ -1617,7 +1625,17 @@ namespace digit_rec
         out_actually_drew_something = true;
     }
 
-    void App::update_network_guess_text()
+    void App::network_evaluate_drawboard()
+    {
+        auto net_input = net->input_values();
+        for (size_t i = 0; i < N_DIGIT_VALUES; i++)
+        {
+            net_input[i] = drawboard_image[i];
+        }
+        net->forward_pass();
+    }
+
+    void App::update_network_guess_text(int32_t correct_label)
     {
         if (!net)
         {
@@ -1680,6 +1698,54 @@ namespace digit_rec
         {
             network_guess_text = "I've no idea what that looks like.";
         }
+
+        if (correct_label >= 0)
+        {
+            network_guess_text += std::format(
+                " (Correct: {})",
+                correct_label
+            );
+        }
+    }
+
+    void App::drawboard_load_random_test_sample()
+    {
+        std::uniform_int_distribution<size_t> idx_dist(
+            0,
+            test_samples.size() - 1u
+        );
+
+        // pick a random sample from the test dataset
+        const auto& samp =
+            test_samples[idx_dist(rng_drawboard_pick_test_sample)];
+
+        // feed it to the network
+        for (size_t i = 0; i < N_DIGIT_VALUES; i++)
+        {
+            drawboard_image[i] = (float)samp.values[i] / 255.f;
+        }
+
+        // randomly transform the image if needed
+        if (val_random_transform)
+        {
+            float digit_data_copy[N_DIGIT_VALUES];
+            std::copy(
+                drawboard_image.data(),
+                drawboard_image.data() + N_DIGIT_VALUES,
+                digit_data_copy
+            );
+
+            apply_random_transform(
+                rng_drawboard_random_test_sample_random_transforms,
+                digit_data_copy,
+                drawboard_image.data(),
+                true
+            );
+        }
+
+        update_drawboard_texture();
+        network_evaluate_drawboard();
+        update_network_guess_text((int32_t)samp.label);
     }
 
 }

@@ -192,6 +192,9 @@ namespace digit_rec
             "Draw some digits!  (Right click to clear)";
         std::string network_guess_text = DEFAULT_NETWORK_GUESS_TEXT;
 
+        std::mt19937 rng_drawboard_pick_test_sample{ 0 };
+        std::mt19937 rng_drawboard_random_test_sample_random_transforms{ 0 };
+
         void reset_drawboard();
         void init_drawboard_texture();
         void update_drawboard_texture();
@@ -200,7 +203,10 @@ namespace digit_rec
         // MUST be called right after the ImGui::Image() call for the drawboard.
         void handle_drawboard_drawing(bool& out_actually_drew_something);
 
-        void update_network_guess_text();
+        void network_evaluate_drawboard();
+        void update_network_guess_text(int32_t correct_label = -1);
+
+        void drawboard_load_random_test_sample();
 
     };
 
