@@ -6,10 +6,11 @@ to recognize handwritten digits.
 
 This project uses the
 [MNIST Handwritten Digits Dataset](https://yann.lecun.com/exdb/mnist/)
-for training and testing a neural network. The dataset is not included in the
-repository for license issues. The user may create a subdirectory in the
-program's binary directory named "MNIST" and copy the 4 IDX files there at their
-own risk.
+for training and testing a neural network. The MNIST dataset contains tens of
+thousands of 28x28 images of handwritten digits along with their labels. The
+dataset is not included in the repository for license issues. The user may
+create a subdirectory in the program's binary directory named "MNIST" and copy
+the 4 IDX files there at their own risk.
 
 You can download the latest build in [releases](https://github.com/bean-mhm/digit-recognition/releases).
 
