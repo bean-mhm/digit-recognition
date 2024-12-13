@@ -1217,7 +1217,7 @@ namespace digit_rec
                             std::chrono::high_resolution_clock::now()
                             - last_accuracy_calc_time
                         ).count();
-                    if (elapsed_ms > 1000)
+                    if (elapsed_ms > 1500)
                     {
                         recalculate_accuracy_and_add_to_history();
                         last_accuracy_calc_time =
@@ -1242,7 +1242,7 @@ namespace digit_rec
         auto net_input = net->input_values();
         auto net_output = net->output_values();
 
-        static constexpr size_t n_tests = 2000;
+        static constexpr size_t n_tests = 4000;
         size_t n_correct_predict = 0;
 
         std::mt19937 rng_pick_sample(val_seed);
@@ -1702,7 +1702,7 @@ namespace digit_rec
         if (correct_label >= 0)
         {
             network_guess_text += std::format(
-                " (Correct: {})",
+                " (Expected: {})",
                 correct_label
             );
         }

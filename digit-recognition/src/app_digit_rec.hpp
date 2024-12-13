@@ -126,7 +126,7 @@ namespace digit_rec
         float val_learning_rate = .01f;
         ActivationFunc val_hidden_activation = ActivationFunc::LeakyRelu;
         ActivationFunc val_output_activation = ActivationFunc::Tanh;
-        uint32_t val_batch_size = 200;
+        uint32_t val_batch_size = 1;
         uint32_t val_seed = 12345678;
         bool val_random_transform = true;
 
