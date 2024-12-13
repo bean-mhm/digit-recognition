@@ -11,6 +11,8 @@ repository for license issues. The user may create a subdirectory in the
 program's binary directory named "MNIST" and copy the 4 IDX files there at their
 own risk.
 
+You can download the latest build in [releases](https://github.com/bean-mhm/digit-recognition/releases).
+
 # How To Use
 
 ## 1. Adjust your settings.
@@ -24,6 +26,8 @@ own risk.
 ## 3. Draw digits and see what the network thinks!
 
 ![screenshot of the drawboard](images/ss-3-drawboard.png)
+
+## [Check out this video demonstration as well!](https://youtu.be/wKRk_7-A_2E)
 
 # How It's Made
 
