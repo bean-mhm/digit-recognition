@@ -1,7 +1,8 @@
 # Introduction
 
-This a little program I wrote that lets you train a Deep Neural Network
-(DNN) to recognize handwritten digits.
+This a little program I wrote that lets you train a
+[Deep Neural Network (DNN)](https://en.wikipedia.org/wiki/Neural_network_(machine_learning))
+to recognize handwritten digits.
 
 This project uses the
 [MNIST Handwritten Digits Dataset](https://yann.lecun.com/exdb/mnist/)
@@ -36,7 +37,7 @@ network's **prediction**. In this case, it holds 10 values that represent how mu
 the networks thinks the input matches digits 0 to 9.
 
 Once a network is trained, we can get a prediction from it by doing a
-**forward pass**. In a forward pass, we start from the first hidden layer and, for each of
+**forward pass**. In a forward pass, we start from the first hidden layer, and for each of
 its nodes, we calculate a **weighted sum** of the activations from the previous
 layer (the input layer), add a **bias** value to it, and finally, put it through a
 custom **activation function** (for example, a sigmoid function). Then, we repeat
@@ -45,14 +46,16 @@ this process for the next layer until we reach the output layer.
 # How They Learn
 
 If we could somehow adjust the weights and biases properly for every node, we
-could get the network to produce more accurate predictions. This is done by
+could get the network to produce more accurate predictions. This is called
 **training**.
 
 ## Cost Function
 
-We can define a function which tells us how accurate the network is. The smaller
-the cost value, the more accurate a network is. There are several methods for
-calculating the cost, but a popular one is to simply add up
+We can define a function which tells us how accurate a network is. The smaller
+the cost value, the more accurate the network is. There are several methods for
+calculating the cost, but a popular one
+([Mean Squared Error](https://en.wikipedia.org/wiki/Mean_squared_error))
+is to simply add up
 
 ```(expected value - network prediction) ^ 2```
 
@@ -68,21 +71,23 @@ the final averaged cost value. This is also called the derivative of the cost
 function with respect to each weight and bias. In my code, I simply call these
 values weight and bias gradients.
 
-We make use of an algorithm named **backpropagation** to make the process of
+We make use of an algorithm named
+[**Backpropagation**](https://en.wikipedia.org/wiki/Backpropagation)
+to make the process of
 calculating weight and bias gradients a whole lot faster. Basically, it starts
 from the last layer and moves backwards, and in each step, calculates the
 gradient of the cost function with respect to the pre-activation values
 (the weighted sums before being put into activation functions) of the nodes in
 the current layer, and uses that gradient to calculate how each weight and bias
 in the current layer affects the final cost. Again, read about the chain rule,
-and check out the links at the end of this document, they're very helpful.
+and check out the links at the end of this document, they're helpful.
 
 ## Gradient Descent
 
 Imagine a 1D polynomial function. Let's say we're on a point on this function,
 and we want to reach a local minimum. We could use methods from calculus to
 find the local minima, but another method is to simply calculate the derivative
-of the function output with respect to its input at the current point, and
+of the function's output with respect to its input at the current point, and
 simply move slightly in that direction, effectively treating the function as a
 line that passes through that point and has the same slope as the original
 function at that point. We can then repeat this process many times until we
@@ -93,8 +98,7 @@ function that takes in our weights and biases and outputs a single cost value.
 Once we know how every weight and bias affects the averaged cost value for a
 given batch (subset of the training dataset), or in other words, the gradient of
 the cost with respect to the weights and biases, we can adjust the weights and
-biases in the opposite direction of the gradient to make the cost function get
-smaller.
+biases in the opposite direction of the gradient to make the cost smaller.
 
 ```
 new_weight = old_weight - (gradient * learning_rate)
@@ -103,17 +107,17 @@ new_weight = old_weight - (gradient * learning_rate)
 Before subtracting the gradient value, we scale it by a tiny value like 0.01.
 This is called the learning rate. If it's too big, we'll jump around the
 multi-dimensional hyperspace of possible weight and bias values and never
-converge to a local minimum. If it's too small, training might get very slow,
+converge to a local minimum. If it's too small, training might get too slow,
 so we need to pick something in the middle.
 
 # Helpful Resources
 
-I won't lie, it took me a couple days before I understood how to implement
+It took me a couple days before I understood how to implement
 backpropagation, so don't lose hope if the whole thing seems complicated and
 huge. That's because it is!
 
 These videos and articles helped me get a much better idea of how neural
-networks learn, so I suggest you watch them too.
+networks learn, so I suggest you check them out too.
 
 - [How to Create a Neural Network - Sebastian Lague](https://www.youtube.com/watch?v=hfMk-kjRv4c)
 
