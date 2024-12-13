@@ -534,8 +534,7 @@ namespace digit_rec
                 }
                 else
                 {
-                    recalculate_accuracy_and_add_to_history();
-                    start_training_thread();
+                    start_training_thread(true);
                     ui_mode = UiMode::Training;
                 }
             }
@@ -662,7 +661,19 @@ namespace digit_rec
         );
 
         ImGui::SameLine(content_start);
-        ImGui::Text(network_guess_text.c_str());
+        if (network_guess_type == NetworkGuessType::Unknown)
+        {
+            ImGui::Text(network_guess_text.c_str());
+        }
+        else
+        {
+            ImGui::TextColored(
+                network_guess_type == NetworkGuessType::Correct
+                ? NETWORK_GUESS_CORRECT_COLOR : NETWORK_GUESS_INCORRECT_COLOR,
+
+                network_guess_text.c_str()
+            );
+        }
 
         draw_info_icon_at_end_of_current_line();
         network_summary_tooltip();
@@ -790,7 +801,7 @@ namespace digit_rec
                 }
             ))
             {
-                start_training_thread();
+                start_training_thread(false);
                 ui_mode = UiMode::Training;
             }
         }
@@ -1130,11 +1141,11 @@ namespace digit_rec
         return std::nullopt;
     }
 
-    void App::start_training_thread()
+    void App::start_training_thread(bool recalculate_accuracy_at_beginning)
     {
         last_accuracy_calc_time = std::chrono::high_resolution_clock::now();
         training_thread = std::make_unique<std::jthread>(
-            [this](std::stop_token stoken)
+            [this, recalculate_accuracy_at_beginning](std::stop_token stoken)
             {
                 // number of floats in a single training example which contains
                 // input data + expected output data.
@@ -1158,6 +1169,11 @@ namespace digit_rec
                     0,
                     train_samples.size() - 1u
                 );
+
+                if (recalculate_accuracy_at_beginning)
+                {
+                    recalculate_accuracy_and_add_to_history();
+                }
 
                 while (!stoken.stop_requested())
                 {
@@ -1458,6 +1474,7 @@ namespace digit_rec
     {
         drawboard_last_mouse_down = false;
         network_guess_text = DEFAULT_NETWORK_GUESS_TEXT;
+        network_guess_type = NetworkGuessType::Unknown;
 
         for (auto& v : drawboard_image)
         {
@@ -1637,6 +1654,8 @@ namespace digit_rec
 
     void App::update_network_guess_text(int32_t correct_label)
     {
+        network_guess_type = NetworkGuessType::Unknown;
+
         if (!net)
         {
             network_guess_text = "No neural network";
@@ -1705,6 +1724,14 @@ namespace digit_rec
                 " (Expected: {})",
                 correct_label
             );
+
+            if (top_three_values[0] > .5f)
+            {
+                network_guess_type =
+                    (correct_label == top_three_idx[0])
+                    ? NetworkGuessType::Correct
+                    : NetworkGuessType::Incorrect;
+            }
         }
     }
 

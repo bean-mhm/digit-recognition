@@ -164,7 +164,7 @@ namespace digit_rec
         std::optional<std::string> prepare_for_training();
 
         // net must be already initialized before this is called.
-        void start_training_thread();
+        void start_training_thread(bool recalculate_accuracy_at_beginning);
         void stop_training_thread();
 
         void recalculate_accuracy_and_add_to_history();
@@ -188,9 +188,25 @@ namespace digit_rec
         float drawboard_last_cursor_x = 0.f;
         float drawboard_last_cursor_y = 0.f;
 
+        enum class NetworkGuessType
+        {
+            Unknown,
+            Correct,
+            Incorrect
+        };
+
         static constexpr auto DEFAULT_NETWORK_GUESS_TEXT =
             "Draw some digits!  (Right click to clear)";
+
+        static constexpr ImVec4 NETWORK_GUESS_CORRECT_COLOR = {
+            .5f, 1.f, .3f, 1.f
+        };
+        static constexpr ImVec4 NETWORK_GUESS_INCORRECT_COLOR = {
+            1.f, .4f, .4f, 1.f
+        };
+
         std::string network_guess_text = DEFAULT_NETWORK_GUESS_TEXT;
+        NetworkGuessType network_guess_type = NetworkGuessType::Unknown;
 
         std::mt19937 rng_drawboard_pick_test_sample{ 0 };
         std::mt19937 rng_drawboard_random_test_sample_random_transforms{ 0 };
