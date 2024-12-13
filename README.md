@@ -11,6 +11,20 @@ repository for license issues. The user may create a subdirectory in the
 program's binary directory named "MNIST" and copy the 4 IDX files there at their
 own risk.
 
+# How To Use
+
+## 1. Adjust your settings.
+
+![screenshot of the settings](images/ss-1-settings.png)
+
+## 2. Keep training for a while.
+
+![screenshot of the training chart](images/ss-2-training.png)
+
+## 3. Draw digits and see what the network thinks!
+
+![screenshot of the drawboard](images/ss-3-drawboard.png)
+
 # How It's Made
 
 This project is written in C++ with Visual Studio 2022. The target platform is
