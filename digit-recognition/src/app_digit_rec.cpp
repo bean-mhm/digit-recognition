@@ -767,7 +767,7 @@ namespace digit_rec
             | ImGuiWindowFlags_NoSavedSettings
         );
         {
-            ImGui::SameLine(content_start);
+            ImGui::SameLine(scaled(WINDOW_PAD + .5f * COLUMN_SPACING));
             if (ImGui::Button(
                 "Reset",
                 {
@@ -780,7 +780,7 @@ namespace digit_rec
                 ui_mode = UiMode::Settings;
             }
 
-            ImGui::SameLine(0.f, 2.f * scaled(COLUMN_SPACING));
+            ImGui::SameLine(0.f, scaled(COLUMN_SPACING));
             if (ImGui::Button(
                 "Pick Test Sample",
                 {
@@ -792,7 +792,7 @@ namespace digit_rec
                 drawboard_load_random_test_sample();
             }
 
-            ImGui::SameLine(0.f, 2.f * scaled(COLUMN_SPACING));
+            ImGui::SameLine(0.f, scaled(COLUMN_SPACING));
             if (ImGui::Button(
                 "Train More",
                 {
