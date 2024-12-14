@@ -36,7 +36,7 @@ namespace curve_fitting
     App::App()
         : rng(SEED),
         net(
-            { 1, 24, 24, 1 },
+            { 1, 16, 16, 1 },
             { ACTIVATION_FN, ACTIVATION_FN, ACTIVATION_FN },
             { ACTIVATION_DERIV, ACTIVATION_DERIV, ACTIVATION_DERIV }
         )
@@ -48,16 +48,19 @@ namespace curve_fitting
         net.randomize_xavier_normal(rng, -.01f, .01f);
 
         // train
-        static constexpr size_t N_EPOCHS = 100000u;
-        for (size_t i = 0u; i < N_EPOCHS; i++)
+        static constexpr size_t N_STEPS = 100000u;
+        for (size_t i = 0u; i < N_STEPS; i++)
         {
             std::vector<float> data;
             std::vector<std::span<float>> spans;
-            generate_random_training_data(rng, 100u, data, spans);
+            generate_random_training_data(rng, 10u, data, spans);
 
             net.train(spans, .01f);
 
-            std::cout << std::format("training epoch {} of {}\n", i, N_EPOCHS);
+            if (i % 1000 == 0)
+            {
+                std::cout << std::format("training step {} / {}\n", i, N_STEPS);
+            }
         }
 
         // evaluate the network
